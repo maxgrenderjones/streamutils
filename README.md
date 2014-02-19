@@ -175,12 +175,13 @@ Dependencies and installation
 -----------------------------
 
 `streamutils` supports python >=2.7, but not python 3 as it uses functions like `hasattr` which have since been removed.
-It's implemented in pure python and doesn't require an external packages. Install streamutils from pypi by running:
+It's implemented in pure python and doesn't require an external packages. Once it's been submitted, you'll be able to
+install streamutils from [pypi] by running:
 
     pip install streamutils
 
 If you want to use streamutils with [sh] or [pbs] ([sh] succeeded [pbs] which is unmaintained but [sh] doesn't support
-Windows) and want pip to install them for you (note that they just provide syntactic sugar, not any new functionality):
+Windows) and want `pip`to install them for you (note that they just provide syntactic sugar, not any new functionality):
 
     pip install streamutils[sh]
 
@@ -223,6 +224,7 @@ that I've seen on [how to use generators](http://www.dabeaz.com/generators/)
 [awk]: http://www.gnu.org/s/gawk/manual/gawk.html‎
 [sh]: https://pypi.python.org/pypi/sh
 [pbs]: https://pypi.python.org/pypi/pbs
+[pypi]: https://pypi.python.org/
 
 License
 -------
