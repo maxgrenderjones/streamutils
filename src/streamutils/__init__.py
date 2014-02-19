@@ -8,7 +8,7 @@ from __future__ import unicode_literals, print_function, division
 
 from six import StringIO, string_types, integer_types
 
-import re, time, codecs, subprocess, os, glob
+import re, time, codecs, subprocess, os, glob, locale, shlex
 from collections import Iterable, Callable, Iterator, deque, OrderedDict, Mapping, Sequence, Counter
 from itertools import chain
 
@@ -19,7 +19,10 @@ class SHWrapper(object):
         try:
             import sh as realsh
         except ImportError:
-            import pbs as realsh
+            try:
+                import pbs as realsh
+            except ImportError:
+                raise ImportError('Neither sh or pbs are available - sh functionality is therefore not available')
         return wrap(realsh.Command(name))
 
 sh=SHWrapper()
@@ -122,12 +125,15 @@ def printList():
 
 @wrap
 def run(args, err=False, cwd=None, env=None, tokens=None, ):
-    stdin=None if tokens is None else StringIO.StringIO("".join(list(tokens)))
+    stdin=None if tokens is None else StringIO("".join(list(tokens)))
+    if isinstance(args, string_types):
+        args=shlex.split(args)
     if not err:
         output=subprocess.check_output(args, cwd=cwd, stdin=stdin)
     else:
         output=subprocess.check_output(args, cwd=cwd, stderr=subprocess.STDOUT, stdin=stdin)
-    for line in StringIO.StringIO(output):
+    encoding=locale.getdefaultlocale()[1]
+    for line in StringIO(output.decode(encoding)):
         if os.linesep!='\n' and line.endswith(os.linesep):
             yield line[:-len(os.linesep)]
         else:
