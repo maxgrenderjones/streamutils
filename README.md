@@ -1,4 +1,177 @@
-streamutils
+Streamutils
 ===========
 
-A pythonic implementation of unix style pipelines
+Have you ever been jealous of friends who know more commandline magic than you? Perhaps you're a python user who
+feels guilty that you never learnt [sed], [awk] or [perl], and wonder quite how many keystrokes you could be saving
+yourself? (On the plus side, you haven't worn the keycaps off your punctuation keys yet). Or maybe you're stuck using
+(or supporting) windows?
+
+Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to
+replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully
+streamutils is for you.
+
+In a sentence, streamutils is pythonic implementation of the pipelines offered by unix shells and the coreutils toolset.
+Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper
+around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
+
+Enough already! What does it do? Perhaps it's best explained with an example. Suppose you want to reimplement our bash
+pipeline outlined above:
+
+```python
+>>> from streamutils import *
+>>> name_and_userid = stream('/etc/passwd') | matches(username) | words([0,2], ':', ' ') | first()
+>>> name_and_userid
+johndoe 1000
+```
+
+Or perhaps you need to start off with output from a real command (streamutils wraps [sh] and [pbs]):
+```python
+>>> from streamutils import *
+>>> edited=sh.git.status() | matches('modified:') | words(1)
+>>> for edit in edited:
+...    print(edit)
+...
+readme.md
+src/streamutils/__init__.py
+```
+(Or alternatively, if you don't want to [sh]/[pbs])
+```python
+>>> from streamutils import *
+>>> edited=run(['git', 'status']) | matches('modified:') | words(1)
+>>> for edit in edited:
+...    print(edit)
+...
+readme.md
+src/streamutils/__init__.py
+```
+
+Features
+--------
+
+-   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your
+    pipeline
+-   Extensible - to use your own functions in a pipeline, just decorate them
+
+How does it work?
+-----------------
+You don't need to know this to use the library, but you may be curious nonetheless - if you want, you can skip this
+section. (Warning: this may make your head hurt - it did mine). It's all implemented through the python magic of a
+duck-typing contracts, decorators, generators and overloaded operators. (So wrong it's right? You decide...) Let's
+explain it with the example of a naive pipeline designed to find module-level function
+names within `ez_setup.py`:
+```python
+>>> from streamutils import *
+>>> s = stream('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
+>>> s | first()                                             #Only now is stream actually called
+u'__python_cmd'
+```
+So what happened?
+
+In order:
+
+-   Functions used in pipelines are expected to (optionally) take as input an `Iterable` thing (as a keyword argument
+    called `tokens` - in future, it should be possible to use any name), and use it to return an `Iterable`
+    thing, or `yield` a series of values
+-   Before using a function in a pipeline, it must be `wrap`-ped (via the `@wrap` decorator). This wraps the function
+    in a `ComposableFunction` which defers execution, so, taking `stream` (equivalent of unix `cat`) as an example,
+    if you write `s=stream('ez_setup.py')` then `stream` not actually called, but the `__call__` method of wrapping
+    `ComposableFunction`. This returns a `ConnectingGenerator` (which implements the basic `generator` functions)
+    which waits for something to iterate over `s` or to compose (i.e. `|`) `s` with another `ConnectingGenerator`.
+    When something starts iterating over a `ConnectingGenerator`, it passes through the values `yield`-ed by the
+    underlying function (i.e. `stream`). So far, so unremarkable.
+-   But, and here's where the magic happens, if you `|` `s` with another `wrap`-ed function e.g. `search`, then the
+    `tokens` keyword argument of `stream` is assigned the generator that will yield the output of the real `stream`
+    function. But still, nothing has happened - the functions have simply been wired together
+
+Two options for what you do next:
+
+-   You iterate over `s`, in which case the functions are finally called and the results are passed down the chain.
+    (Your for loop would iterate over the function names in `ez_setup.py`)
+-   You compose `s` with a function (in this case `first`)  that has been decorated with `wrapTerminator` to
+    give a `Terminator` function. A `Terminator` function completes the pipeline and will return a value, not another
+    `generator`. (Strictly speaking, when you call a `Terminator` nothing happens. It's only when the `__or__`
+    function (i.e. the `|` or `or` operator) is called betwen a `ConnectingGenerator` and a `Terminator` that the value
+    returned by the function wrapped in a `Terminator` - in this case `first()` is called, and the chain of generators
+    yield their values.
+
+API Philosophy & Conventions
+----------------------------
+There are a number of tenets to the API philosophy, which is intended to maximise backward and forward compatibility
+and minimise surprises - while the API is in flux, if functions don't fit the tenets (or tenets turn out to be flawed -
+feedback welcome!) then the API or tenets will be changed:
+
+-   Functions should have sensible names (none of this `cat` / `wc` nonsense)
+-   These names should be as close as possible to the name of the related function from the python library. It's ok
+    if the function names clash (i.e. there's a function called `search` in `re` too)
+-   If you need to avoid clashes, `import streamutils as su` (which has the double benefit of being nice and terse to
+    keep your pipelines short, and has the benefit of making you [all powerful](xkcd.com/149/))
+-   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return,
+    is the first argument of `head`), then `fname`, which allows you to avoid using `stream` if you really want. To be
+    safe, apart from for `stream`, `head`, `tail` and `follow`, `fname` should be called as a keyword argument as it
+    marks the first argument whose position is not guaranteed to be stable.
+-   `tokens` is the last keyword argument of each function
+-   If it's sensible for the argument to a function to be e.g. a string or a list of strings then both will be supported
+    (so if you pass a list of filenames to stream, it will stream each one in turn).
+-	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other 
+	functions yielding strings should follow a similar convention (for example `run` replaces `\r\n` in its output with 
+	`\n`)
+
+I would be open to creating a `coreutils` (or similarly named) subpackage, which aims to roughly replicate the names,
+syntax and flags of the `coreutils` toolset (i.e. `grep`, `cut`, `wc` and friends), but only if they are implemented as
+thin wrappers around streamutils functions. After all, the functionality they provide is tried and tested, even if their
+names were designed primarily to be short to type (rather than logical, memorable or discoverable).
+
+Dependencies and installation
+-----------------------------
+
+`streamutils` supports python >=2.7, but not python 3 as it uses functions like `hasattr` which have since been removed.
+It's implemented in pure python and doesn't require an external packages. Install streamutils from pypi by running:
+
+    pip install streamutils
+
+If you want to use streamutils with [sh] or [pbs] ([sh] succeeded [pbs] which is unmaintained but [sh] doesn't support
+Windows) and want pip to install them for you (note that they just provide syntactic sugar, not any new functionality):
+
+    pip install streamutils[sh]
+
+Note that to use them, you have to use the `sh` variable of the `streamutils` package which returns `wrap`-ed versions
+of the real `sh` functions.
+
+Alternatively, you can instlal from the source by running:
+
+    python setup.py install
+
+Status
+------
+`streamutils` is currently (pre)-alpha status. By which I mean:
+-   I think it works fine, but not all code paths have been tested (and indeed it has no tests, yet)
+-   The API is unstable, i.e. the names of functions are still in flux, the order of the positional arguments may
+    change, and the order of keyword arguments is almost guaranteed to change
+
+So why release?
+-   Because as soon as I managed to get `streamutils` working, I couldn't stop thinking of all the places I'd want to
+    use it
+-   Because I value feedback on the API - if you think the names of functions or their arguments would be more easily
+    understood if they were changed then open an issue and let's have the debate
+-   Because it's a great demonstration of the crazy stuff you can do in python by overloading operators
+-   Why not?
+
+Contribute
+----------
+
+- Issue Tracker: http://github.com/maxgrendjones/streamutils/issues
+- Source Code: http://github.com/maxgrenderjones/streamutils
+- Documentation: http://streamutils.readthedocs.org/
+
+Acknowledgements and References
+-------------------------------
+[perl]: http://perl.org
+[sed]: http://www.gnu.org/software/sed/
+[awk]: http://www.gnu.org/s/gawk/manual/gawk.html‎
+[sh]: https://pypi.python.org/pypi/sh
+[pbs]: https://pypi.python.org/pypi/pbs
+
+License
+-------
+
+The project is licensed under the Eclipse Public License - v 1.0.
