@@ -6,7 +6,7 @@
 
 from __future__ import unicode_literals, print_function, division
 
-from six import StringIO
+from six import StringIO, string_types, integer_types
 
 import re, time, codecs, subprocess, os, glob
 from collections import Iterable, Callable, Iterator, deque, OrderedDict, Mapping, Sequence, Counter
@@ -71,7 +71,7 @@ class ConnectingGenerator(Iterable):
             return other.func(*other.args, **other.kwargs)
             #@Todo Call close() back down the chain rather than waiting for GC to do it for us
         else:
-            raise ValueError('The ConnectingGenerator is being composed with a %s' % type(other))
+            raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other))
 
 class Terminator(Callable):
     def __init__(self, func, tokenskw):
@@ -107,7 +107,7 @@ def wrapTerminator(func, tokenskw='tokens'):
     return Terminator(func, tokenskw)
 
 def wrapInIterable(item):
-    if type(item) in {int, long, float, basestring} or isinstance(item, basestring):
+    if isinstance(item, integer_types) or isinstance(item, string_types):
         return [item]
     elif isinstance(item, Iterable):
         return item
@@ -183,7 +183,7 @@ def write(fname=None, encoding=None, tokens=None):
     if not fname:
         for line in tokens:
             print(line)
-    elif isinstance(fname, basestring):
+    elif isinstance(fname, string_types):
         with codecs.open(fname, encoding=encoding, mode='wb') if encoding else open(fname, mode='wU') as f:
             f.writelines(tokens)
     else:
@@ -271,7 +271,7 @@ def matches(pattern, flags=0, match=False, v=False, tokens=None):
     #print 'tokens type %s' %  type(tokens)
     for line in tokens:
         #print 'Running line %s (type: %s) against %s' % (line, type(line), pattern)
-        assert isinstance(line, basestring)
+        assert isinstance(line, string_types)
         result = matcher.match(line) if match else matcher.search(line)
         if result and not v:
             yield line
@@ -320,7 +320,7 @@ def split(n, sep=None, outsep=' ', tokens=None):
 
 @wrap
 def tokenize(pattern, groups=None, names=None, match=True, flags=0, inject={}, tokens=None):
-    if isinstance(pattern, basestring):
+    if isinstance(pattern, string_types):
         matcher=re.compile(pattern, flags=flags)
         for line in tokens:
             result = matcher.match(line) if match else matcher.search(line)
