@@ -19,7 +19,7 @@ pipeline outlined above:
 
 ```python
 >>> from streamutils import *
->>> name_and_userid = stream('/etc/passwd') | matches(username) | words([0,2], ':', ' ') | first()
+>>> name_and_userid = stream('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
 >>> name_and_userid
 johndoe 1000
 ```
@@ -49,8 +49,53 @@ Features
 --------
 
 -   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your
-    pipeline
+    pipeline, when each of the functions run as a co-routine (so you can use a pipeline on a big file without needing to
+    have enough space to store the whole thing in memory)
 -   Extensible - to use your own functions in a pipeline, just decorate them
+
+Functions
+---------
+A quick bit of terminology:
+- **pipeline**: A series of streamutil functions `or`-ed together with pipes (i.e. `|`)
+- **tokens**: things being passed through the pipeline
+- **stream**: the underlying data which is being broken into the tokens that are passed through the pipeline
+
+Implemented so far (equivalent `coreutils` function in brackets if the name is different). Note that the following
+descriptions say 'lines', but there's nothing stopping the functions operating on a stream of tokens that aren't newline
+terminated strings:
+###Composable Functions
+Implemented:
+-   `stream`, `head`, `tail`, `follow` to: stream a file (`cat`); extract the first few tokens of a stream; the last few
+    tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
+-   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to
+    look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly
+    with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
+-   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if
+    they match
+-   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`); split a line
+    (with `re.split`) into a set of 'words' and return a subset of those words (`cut`); generate a stream of groups
+    matched by the regexp (either as a list, or named as an `OrderedDict`); take the output of `tokens` and call a user
+    defined function on each element (e.g. to call `int` on fields that should be integers)
+-   `reformat` to: take the output of `tokens` and format it using the `str.format` syntax (`format` is a builtin, so
+    it would be bad manners not to rename this function).
+-   `unique` to: only return lines that haven't been seen already (`uniq`)
+-   `transform`: to take user-defined function and use it to transform each line
+Not yet implemented:
+-   `separate`, `combine`: to split the tokens in the stream so that the remainder of the stream receives sub-tokens;
+    to combine subtokens back into tokens
+
+
+###Terminators
+Implemented:
+-   `first`, `last`, `nth`, `sort` to: return the first item of the stream; the last item of the stream; the nth item of
+    the stream; return a sorted list of the items in a stream
+-   `count`, `bag`, `sort`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict`
+    subclass) with unique tokens as keys and aa count of their occurences as values; a sorted list of the tokens.
+(Implemention note: `sort` will be a terminator as a reminder that that it needs to exhaust the stream before it can
+start working)
+
+Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first
+function of the pipeline as its `tokens` argument.
 
 How does it work?
 -----------------
@@ -102,7 +147,7 @@ feedback welcome!) then the API or tenets will be changed:
 
 -   Functions should have sensible names (none of this `cat` / `wc` nonsense)
 -   These names should be as close as possible to the name of the related function from the python library. It's ok
-    if the function names clash (i.e. there's a function called `search` in `re` too)
+    if the function names clash (e.g. there's a function called `search` in `re` too)
 -   If you need to avoid clashes, `import streamutils as su` (which has the double benefit of being nice and terse to
     keep your pipelines short, and has the benefit of making you [all powerful](xkcd.com/149/))
 -   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return,
@@ -113,8 +158,13 @@ feedback welcome!) then the API or tenets will be changed:
 -   If it's sensible for the argument to a function to be e.g. a string or a list of strings then both will be supported
     (so if you pass a list of filenames to stream, it will stream each one in turn).
 -	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other 
-	functions yielding strings should follow a similar convention (for example `run` replaces `\r\n` in its output with 
+	functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with
 	`\n`)
+-   `head(5)` returns the first 5 items, similarly `tail(5)` the last 5 items. `search(pattern, 2)`, `word(3)` and
+    `nth(4)` return the second group, third 'word' and fourth item (not the third, fourth and fifth items). Using
+    zero-based indexing in this case feels wrong to me - is that too confusing/suprising? (Note that python is
+    inconsistent here - `group(1)` is the first not second group, as `group(0)` is reserved for the whole pattern).
+
 
 I would be open to creating a `coreutils` (or similarly named) subpackage, which aims to roughly replicate the names,
 syntax and flags of the `coreutils` toolset (i.e. `grep`, `cut`, `wc` and friends), but only if they are implemented as
@@ -137,7 +187,7 @@ Windows) and want pip to install them for you (note that they just provide synta
 Note that to use them, you have to use the `sh` variable of the `streamutils` package which returns `wrap`-ed versions
 of the real `sh` functions.
 
-Alternatively, you can instlal from the source by running:
+Alternatively, you can install from the source by running:
 
     python setup.py install
 
@@ -165,6 +215,9 @@ Contribute
 
 Acknowledgements and References
 -------------------------------
+A shout-out goes to David Beazley, who has written the most comprehensible (and comprehensive) documentation
+that I've seen on [how to use generators](http://www.dabeaz.com/generators/)
+
 [perl]: http://perl.org
 [sed]: http://www.gnu.org/software/sed/
 [awk]: http://www.gnu.org/s/gawk/manual/gawk.html‎
