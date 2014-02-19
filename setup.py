@@ -2,6 +2,7 @@
 #coding: utf-8
 # vim: set tabstop=4 shiftwidth=4 expandtab:
 from __future__ import print_function, division
+import sys
 
 from ez_setup import use_setuptools
 use_setuptools()
