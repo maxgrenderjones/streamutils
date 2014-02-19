@@ -41,7 +41,7 @@ src/streamutils/__init__.py
 >>> for edit in edited:
 ...    print(edit)
 ...
-readme.md
+README.md
 src/streamutils/__init__.py
 ```
 
@@ -96,6 +96,7 @@ Implemented:
     start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g
     an already open file) otherwise.
+-   `action`: for every token, call a user-defined function
 
 Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first
 function of the pipeline as its `tokens` argument.
