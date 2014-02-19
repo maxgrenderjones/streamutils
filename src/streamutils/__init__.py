@@ -306,14 +306,17 @@ def find(pathpattern=None, tokens=None):
         raise ValueError('Nothing to find')
 
 @wrap
-def words(n, sep='\s+', outsep=' ', flags=0, tokens=None):
-    matcher=re.compile(sep) if not flags else re.compile(sep, flags=flags)
+def words(n, word='\S+', outsep=' ', flags=0, tokens=None):
+    matcher=re.compile(word) if not flags else re.compile(word, flags=flags)
     n=wrapInIterable(n)
     for line in tokens:
-        result=matcher.split(line)
+        result=matcher.findall(line)
         if len(result)<max(n):
-            raise ValueError('%s does not have %d words using separator %s' % (line, max(n), sep))
-        yield outsep.join([result[i-1] for i in n])
+            raise ValueError('%s does not have %d words using word pattern %s' % (line, max(n), word))
+        if outsep is not None:
+            yield outsep.join([result[i-1] for i in n])
+        else:
+            yield [result[i-1] for i in n]
 
 @wrap
 def split(n, sep=None, outsep=' ', tokens=None):

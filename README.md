@@ -72,10 +72,10 @@ Implemented:
     with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if
     they match
--   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`); split a line
-    (with `re.split`) into a set of 'words' and return a subset of those words (`cut`); generate a stream of groups
-    matched by the regexp (either as a list, or named as an `OrderedDict`); take the output of `tokens` and call a user
-    defined function on each element (e.g. to call `int` on fields that should be integers)
+-   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`);
+    find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; generate a stream
+    of groups matched by the regexp (either as a list, or named as an `OrderedDict`); take the output of `tokens` and
+    call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 -   `reformat` to: take the output of `tokens` and format it using the `str.format` syntax (`format` is a builtin, so
     it would be bad manners not to rename this function).
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
