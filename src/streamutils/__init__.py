@@ -6,7 +6,9 @@
 
 from __future__ import unicode_literals, print_function, division
 
-import re, time, codecs, subprocess, StringIO, os, glob
+from six import StringIO
+
+import re, time, codecs, subprocess, os, glob
 from collections import Iterable, Callable, Iterator, deque, OrderedDict, Mapping, Sequence, Counter
 from itertools import chain
 
@@ -167,9 +169,26 @@ def sort(cmp=None, key=None, reverse=False, tokens=None):
 def count(tokens=None):
     return sum(1 for line in tokens)
 
-@wrap
+@wrapTerminator
 def bag(tokens=None):
     return Counter(tokens)
+
+@wrapTerminator
+def action(func, tokens=None):
+    for line in tokens:
+        func(line)
+
+@wrapTerminator
+def write(fname=None, encoding=None, tokens=None):
+    if not fname:
+        for line in tokens:
+            print(line)
+    elif isinstance(fname, basestring):
+        with codecs.open(fname, encoding=encoding, mode='wb') if encoding else open(fname, mode='wU') as f:
+            f.writelines(tokens)
+    else:
+        for line in tokens:
+            fname.write(line)
 
 @wrap
 def unique(tokens=None):

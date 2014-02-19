@@ -80,6 +80,7 @@ Implemented:
     it would be bad manners not to rename this function).
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
 -   `transform`: to take user-defined function and use it to transform each line
+
 Not yet implemented:
 -   `separate`, `combine`: to split the tokens in the stream so that the remainder of the stream receives sub-tokens;
     to combine subtokens back into tokens
@@ -90,9 +91,11 @@ Implemented:
 -   `first`, `last`, `nth`, `sort` to: return the first item of the stream; the last item of the stream; the nth item of
     the stream; return a sorted list of the items in a stream
 -   `count`, `bag`, `sort`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict`
-    subclass) with unique tokens as keys and aa count of their occurences as values; a sorted list of the tokens.
-(Implemention note: `sort` will be a terminator as a reminder that that it needs to exhaust the stream before it can
-start working)
+    subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens.
+    (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can
+    start working)
+-   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g
+    an already open file) otherwise.
 
 Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first
 function of the pipeline as its `tokens` argument.
