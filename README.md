@@ -136,7 +136,7 @@ Alternatively, you can install from the source by running:
 
     python setup.py install
 
-If you don't have [pip] (the official way to install python packages, assuming your package manager isn't doing it for you) then use your package manager to install it, or if you don't have one (hello Windows users), download and run https://raw.github.com/pypa/pip/master/contrib/get-pip.py
+If you don't have [pip], which is now the official way to install python packages (assuming your package manager isn't doing it for you) then use your package manager to install it, or if you don't have one (hello Windows users), download and run https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 
 Status
 ------
