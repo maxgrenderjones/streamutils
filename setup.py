@@ -15,6 +15,6 @@ setup(
       packages=find_packages('src'),
       install_requires = {'six'},
       extras_require = {
-      	'sh': ['pbs>=0.110'] if sys.platform=='win32' else ['sh>=1.09']
+      	'sh': ['pbs'] if sys.platform=='win32' else ['sh']
       }
       )

@@ -65,7 +65,7 @@ descriptions say 'lines', but there's nothing stopping the functions operating o
 terminated strings:
 ###Composable Functions
 Implemented:
--   `stream`, `head`, `tail`, `follow` to: stream a file (`cat`); extract the first few tokens of a stream; the last few
+-   `read`, `head`, `tail`, `follow` to: read a file (`cat`); extract the first few tokens of a stream; the last few
     tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to
     look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly
@@ -76,8 +76,10 @@ Implemented:
     find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; generate a stream
     of groups matched by the regexp (either as a list, or named as an `OrderedDict`); take the output of `tokens` and
     call a user defined function on each element (e.g. to call `int` on fields that should be integers)
--   `reformat` to: take the output of `tokens` and format it using the `str.format` syntax (`format` is a builtin, so
+-   `sformat` to: take the output of `tokens` and format it using the `str.format` syntax (`format` is a builtin, so
     it would be bad manners not to rename this function).
+-   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If
+    no function is given, it returns the items that a True (or False) in a boolean context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
 -   `transform`: to take user-defined function and use it to transform each line
 
@@ -109,8 +111,8 @@ explain it with the example of a naive pipeline designed to find module-level fu
 names within `ez_setup.py`:
 ```python
 >>> from streamutils import *
->>> s = stream('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
->>> s | first()                                             #Only now is stream actually called
+>>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
+>>> s | first()                                             #Only now is read actually called
 u'__python_cmd'
 ```
 So what happened?
@@ -121,14 +123,14 @@ In order:
     called `tokens` - in future, it should be possible to use any name), and use it to return an `Iterable`
     thing, or `yield` a series of values
 -   Before using a function in a pipeline, it must be `wrap`-ped (via the `@wrap` decorator). This wraps the function
-    in a `ComposableFunction` which defers execution, so, taking `stream` (equivalent of unix `cat`) as an example,
-    if you write `s=stream('ez_setup.py')` then `stream` not actually called, but the `__call__` method of wrapping
+    in a `ComposableFunction` which defers execution, so, taking `read` (equivalent of unix `cat`) as an example,
+    if you write `s=read('ez_setup.py')` then `read` not actually called, but the `__call__` method of wrapping
     `ComposableFunction`. This returns a `ConnectingGenerator` (which implements the basic `generator` functions)
     which waits for something to iterate over `s` or to compose (i.e. `|`) `s` with another `ConnectingGenerator`.
     When something starts iterating over a `ConnectingGenerator`, it passes through the values `yield`-ed by the
-    underlying function (i.e. `stream`). So far, so unremarkable.
+    underlying function (i.e. `read`). So far, so unremarkable.
 -   But, and here's where the magic happens, if you `|` `s` with another `wrap`-ed function e.g. `search`, then the
-    `tokens` keyword argument of `stream` is assigned the generator that will yield the output of the real `stream`
+    `tokens` keyword argument of `read` is assigned the generator that will yield the output of the real `read`
     function. But still, nothing has happened - the functions have simply been wired together
 
 Two options for what you do next:
@@ -146,20 +148,22 @@ API Philosophy & Conventions
 ----------------------------
 There are a number of tenets to the API philosophy, which is intended to maximise backward and forward compatibility
 and minimise surprises - while the API is in flux, if functions don't fit the tenets (or tenets turn out to be flawed -
-feedback welcome!) then the API or tenets will be changed:
+feedback welcome!) then the API or tenets will be changed. If you remember these, you should be able to guess (or at
+least remember) what a function will be called, and how to call it. These tenets are:
 
 -   Functions should have sensible names (none of this `cat` / `wc` nonsense)
 -   These names should be as close as possible to the name of the related function from the python library. It's ok
-    if the function names clash (e.g. there's a function called `search` in `re` too)
+    if the function names clash (e.g. there's a function called `search` in `re` too), but not if they clash with
+    builtin functions - in that case they get an `s` prepended (hence `sfilter`, `sfilterfalse`, `sformat`).
 -   If you need to avoid clashes, `import streamutils as su` (which has the double benefit of being nice and terse to
     keep your pipelines short, and has the benefit of making you [all powerful](xkcd.com/149/))
 -   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return,
-    is the first argument of `head`), then `fname`, which allows you to avoid using `stream` if you really want. To be
-    safe, apart from for `stream`, `head`, `tail` and `follow`, `fname` should be called as a keyword argument as it
+    is the first argument of `head`), then `fname`, which allows you to avoid using `read` if you really want. To be
+    safe, apart from for `read`, `head`, `tail` and `follow`, `fname` should be called as a keyword argument as it
     marks the first argument whose position is not guaranteed to be stable.
 -   `tokens` is the last keyword argument of each function
 -   If it's sensible for the argument to a function to be e.g. a string or a list of strings then both will be supported
-    (so if you pass a list of filenames to stream, it will stream each one in turn).
+    (so if you pass a list of filenames to `read` (via `fname`), it will `read` each one in turn).
 -	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other 
 	functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with
 	`\n`)
@@ -177,8 +181,8 @@ names were designed primarily to be short to type (rather than logical, memorabl
 Dependencies and installation
 -----------------------------
 
-`streamutils` supports python >=2.7, but not python 3 as it uses functions like `hasattr` which have since been removed.
-It's implemented in pure python and doesn't require an external packages. Once it's been submitted, you'll be able to
+`streamutils` supports python >=2.7 and >=3 by using the [six] library (its only mandatory dependency). Otherwise,
+it's implemented in pure python and doesn't require any external packages. Once it's been submitted, you'll be able to
 install streamutils from [pypi] by running:
 
     pip install streamutils
@@ -213,9 +217,9 @@ So why release?
 Contribute
 ----------
 
-- Issue Tracker: http://github.com/maxgrendjones/streamutils/issues
+- Issue Tracker: http://github.com/maxgrenderjones/streamutils/issues
 - Source Code: http://github.com/maxgrenderjones/streamutils
-- Documentation: http://streamutils.readthedocs.org/
+- API documentation (will be at): http://streamutils.readthedocs.org/ or http://pythonhosted.org/streamutils/ (or both?)
 
 Acknowledgements and References
 -------------------------------
@@ -228,6 +232,7 @@ that I've seen on [how to use generators](http://www.dabeaz.com/generators/)
 [sh]: https://pypi.python.org/pypi/sh
 [pbs]: https://pypi.python.org/pypi/pbs
 [pypi]: https://pypi.python.org/
+[six]: https://pythonhosted.org/six/
 
 License
 -------

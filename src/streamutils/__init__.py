@@ -7,6 +7,7 @@
 from __future__ import unicode_literals, print_function, division
 
 from six import StringIO, string_types, integer_types
+from six.moves import filter , filterfalse   # This works - moves is a fake module
 
 import re, time, codecs, subprocess, os, glob
 from collections import Iterable, Callable, Iterator, deque, OrderedDict, Mapping, Sequence, Counter
@@ -238,8 +239,8 @@ def follow(fname, encoding=None):
         yield line
 
 @wrap
-def stream(fname, encoding=None):
-    files=wrapInIterable(fname)
+def read(fname, encoding=None, tokens=None):
+    files=wrapInIterable(fname) if fname else wrapInIterable(tokens)
     for name in files:
         with eopen(name, encoding) as f:
             for line in f:
@@ -250,7 +251,7 @@ def stream(fname, encoding=None):
 def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, flags=0, tokens=None):
     matcher = re.compile(pattern) if not flags else re.compile(pattern, flags=flags)
     if fname is not None:
-        tokens=stream(fname, encoding)
+        tokens=read(fname, encoding)
     for line in tokens:
         if not to:
             result = matcher.match(line) if match else matcher.search(line)
@@ -299,8 +300,18 @@ def find(pathpattern=None, tokens=None):
     else:
         raise ValueError('Nothing to find')
 
+
 @wrap
 def words(n, word='\S+', outsep=' ', flags=0, tokens=None):
+    """
+
+    :param n:
+    :param word:
+    :param outsep:
+    :param flags:
+    :param tokens:
+    :raise ValueError:
+    """
     matcher=re.compile(word) if not flags else re.compile(word, flags=flags)
     n=wrapInIterable(n)
     for line in tokens:
@@ -361,9 +372,17 @@ def transform(transformation, tokens=None):
     for line in tokens:
         return transformation(line)
 
+@wrap
+def sfilter(filterfunction=None, tokens=None):
+    for line in filter(filterfunction, tokens):
+        return line
+
+def sfilterfalse(filterfunction=None, tokens=None):
+    for line in filterfalse(filterfunction, tokens):
+        return line
 
 @wrap
-def reformat(pattern, tokens=None):
+def sformat(pattern, tokens=None):
     for token in tokens:
         if isinstance(token, Sequence):
             yield pattern.format(*token)
@@ -373,7 +392,7 @@ def reformat(pattern, tokens=None):
             raise TypeError('Format expects a sequence or a mapping - got a %s' % type(token))
 
 if __name__=='__main__':
-    output= stream('__init__.py') | matches('def') | matches('streamutils.py') | search('(.prin.)', n=0)
+    output= read('__init__.py') | matches('def') | matches('streamutils.py') | search('(.prin.)', n=0)
     output= head(10, '__init__.py')
     output= printList() | matches('a')
     output=tail(10, '__init__.py')
