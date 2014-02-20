@@ -26,7 +26,7 @@ Or perhaps you need to start off with output from a real command (streamutils wr
 readme.md
 src/streamutils/__init__.py
 ```
-(Or alternatively, if you don't want to [sh]/[pbs])
+(Or alternatively, if you don't want to install [sh]/[pbs])
 ```python
 >>> from streamutils import *
 >>> edited=run(['git', 'status']) | matches('modified:') | words(1)
@@ -56,8 +56,7 @@ Implemented so far (equivalent `coreutils` function in brackets if the name is d
 
 Implemented:
 -   `read`, `head`, `tail`, `follow` to: read a file (`cat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
--   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly
-    with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
+-   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if they match
 -   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; generate a stream     of groups matched by the regexp (either as a list, or named as an `OrderedDict`); take a `list` or `dict` (e.g. the output of `tokens`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 -   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `tokens`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
@@ -119,11 +118,15 @@ I would be open to creating a `coreutils` (or similarly named) subpackage, which
 Dependencies and installation
 -----------------------------
 
-`streamutils` supports python >=2.7 and >=3 by using the [six] library (its only mandatory dependency). Otherwise, it's implemented in pure python and doesn't require any external packages. Once it's been submitted, you'll be able to install streamutils from [pypi] by running:
+`streamutils` supports python >=2.7 and >=3 by using the [six] library (its only mandatory dependency). Otherwise, it's implemented in pure python and doesn't require any external packages. Once it's been submitted, if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
 
     pip install streamutils
 
-If you want to use streamutils with [sh] or [pbs] ([sh] succeeded [pbs] which is unmaintained but [sh] doesn't support Windows) and want `pip`to install them for you (note that they just provide syntactic sugar, not any new functionality):
+If you want pip to install the mandatory dependencies (i.e. [ix]) for you, then run:
+
+    pip install streamutils[deps]
+
+And if you want to use streamutils with [sh] or [pbs] ([sh] succeeded [pbs] which is unmaintained but [sh] doesn't support Windows) and want `pip` to install them for you (note that they just provide syntactic sugar, not any new functionality):
 
     pip install streamutils[sh]
 
@@ -132,6 +135,8 @@ Note that to use them, you have to use the `sh` variable of the `streamutils` pa
 Alternatively, you can install from the source by running:
 
     python setup.py install
+
+If you don't have [pip] (the official way to install python packages, assuming your package manager isn't doing it for you) then use your package manager to install it, or if you don't have one (hello Windows users), download and run https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 
 Status
 ------
@@ -163,6 +168,7 @@ A shout-out goes to David Beazley, who has written the most comprehensible (and 
 [pbs]: https://pypi.python.org/pypi/pbs
 [pypi]: https://pypi.python.org/
 [six]: https://pythonhosted.org/six/
+[pip: http://pip.readthedocs.org/en/latest/installing.html
 
 License
 -------

@@ -47,7 +47,7 @@ Or perhaps you need to start off with output from a real command
     readme.md
     src/streamutils/__init__.py
 
-(Or alternatively, if you don't want to
+(Or alternatively, if you don't want to install
 `sh <https://pypi.python.org/pypi/sh>`__/`pbs <https://pypi.python.org/pypi/pbs>`__)
 
 .. code:: python
@@ -99,9 +99,9 @@ Implemented:
 -  ``matches``, ``nomatch``, ``search``, ``replace`` to: match tokens
    (``grep``), find lines that don't match (``grep -v``), to look for
    patterns in a string (via ``re.search`` or ``re.match``) and return
-   the groups of lines that match (possibly
-    with substitution); replace elements of a string (i.e. implemented
-   via ``str.replace`` rather than a regexp)
+   the groups of lines that match (possibly with substitution); replace
+   elements of a string (i.e. implemented via ``str.replace`` rather
+   than a regexp)
 -  ``glob`` (or should it be ``find``?), ``fnmatches`` to: generate
    filenames matching a pattern; screen names to see if they match
 -  ``split``, ``words``, ``tokens``, ``convert`` to: split a line (with
@@ -275,23 +275,31 @@ Dependencies and installation
 -----------------------------
 
 ``streamutils`` supports python >=2.7 and >=3 by using the
-`six <https://pythonhosted.org/six/>`__ library (its only mandatory
-dependency). Otherwise, it's implemented in pure python and doesn't
-require any external packages. Once it's been submitted, you'll be able
-to install streamutils from `pypi <https://pypi.python.org/>`__ by
+`six <https://pythonhosted.org/six/%20[pip:%20http://pip.readthedocs.org/en/latest/installing.html>`__
+library (its only mandatory dependency). Otherwise, it's implemented in
+pure python and doesn't require any external packages. Once it's been
+submitted, if you've already got the dependencies installed, you'll be
+able to install streamutils from `pypi <https://pypi.python.org/>`__ by
 running:
 
 ::
 
     pip install streamutils
 
-If you want to use streamutils with
+If you want pip to install the mandatory dependencies (i.e. [ix]) for
+you, then run:
+
+::
+
+    pip install streamutils[deps]
+
+And if you want to use streamutils with
 `sh <https://pypi.python.org/pypi/sh>`__ or
 `pbs <https://pypi.python.org/pypi/pbs>`__
 (`sh <https://pypi.python.org/pypi/sh>`__ succeeded
 `pbs <https://pypi.python.org/pypi/pbs>`__ which is unmaintained but
 `sh <https://pypi.python.org/pypi/sh>`__ doesn't support Windows) and
-want ``pip``\ to install them for you (note that they just provide
+want ``pip`` to install them for you (note that they just provide
 syntactic sugar, not any new functionality):
 
 ::
@@ -307,6 +315,12 @@ Alternatively, you can install from the source by running:
 ::
 
     python setup.py install
+
+If you don't have [pip] (the official way to install python packages,
+assuming your package manager isn't doing it for you) then use your
+package manager to install it, or if you don't have one (hello Windows
+users), download and run
+https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 
 Status
 ------

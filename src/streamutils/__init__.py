@@ -327,7 +327,7 @@ def words(n, word='\S+', outsep=' ', names=None, flags=0, tokens=None):
         if outsep is not None:
             yield outsep.join([result[i-1] for i in n])
         elif names:
-            yield OrderedDict((key, result[field] for key, field in zip(names, n)))
+            yield OrderedDict((key, result[field] for (key, field) in zip(names, n)))
         else:
             yield [result[i-1] for i in n]
 
