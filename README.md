@@ -3,8 +3,7 @@ Streamutils
 
 Have you ever been jealous of friends who know more commandline magic than you? Perhaps you're a python user who feels guilty that you never learnt [sed], [awk] or [perl], and wonder quite how many keystrokes you could be saving yourself? (On the plus side, you haven't worn the keycaps off your punctuation keys yet). Or maybe you're stuck using (or supporting) windows?
 
-Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully
-streamutils is for you.
+Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully streamutils is for you.
 
 In a sentence, streamutils is pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
 
@@ -41,8 +40,7 @@ src/streamutils/__init__.py
 Features
 --------
 
--   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your     pipeline, when each of the functions run as a co-routine (so you can use a pipeline on a big file without needing to
-    have enough space to store the whole thing in memory)
+-   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your     pipeline, when each of the functions run as a co-routine (so you can use a pipeline on a big file without needing to have enough space to store the whole thing in memory)
 -   Extensible - to use your own functions in a pipeline, just decorate them
 
 Functions
@@ -53,7 +51,9 @@ A quick bit of terminology:
 - **stream**: the underlying data which is being broken into the tokens that are passed through the pipeline
 
 Implemented so far (equivalent `coreutils` function in brackets if the name is different). Note that the following descriptions say 'lines', but there's nothing stopping the functions operating on a stream of tokens that aren't newline terminated strings:
+
 ###Composable Functions
+
 Implemented:
 -   `read`, `head`, `tail`, `follow` to: read a file (`cat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly
@@ -114,7 +114,6 @@ There are a number of tenets to the API philosophy, which is intended to maximis
 -	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with `\n`)
 -   `head(5)` returns the first 5 items, similarly `tail(5)` the last 5 items. `search(pattern, 2)`, `word(3)` and `nth(4)` return the second group, third 'word' and fourth item (not the third, fourth and fifth items). Using zero-based indexing in this case feels wrong to me - is that too confusing/suprising? (Note that this matches how the coreutils behave, and besides, python is inconsistent here - `group(1)` is the first not second group, as `group(0)` is reserved for the whole pattern).
 
-
 I would be open to creating a `coreutils` (or similarly named) subpackage, which aims to roughly replicate the names, syntax and flags of the `coreutils` toolset (i.e. `grep`, `cut`, `wc` and friends), but only if they are implemented as thin wrappers around streamutils functions. After all, the functionality they provide is tried and tested, even if their names were designed primarily to be short to type (rather than logical, memorable or discoverable).
 
 Dependencies and installation
@@ -159,7 +158,7 @@ A shout-out goes to David Beazley, who has written the most comprehensible (and 
 
 [perl]: http://perl.org
 [sed]: http://www.gnu.org/software/sed/
-[awk]: http://www.gnu.org/s/gawk/manual/gawk.html‎
+[awk]: http://www.gnu.org/s/gawk/manual/gawk.html
 [sh]: https://pypi.python.org/pypi/sh
 [pbs]: https://pypi.python.org/pypi/pbs
 [pypi]: https://pypi.python.org/
