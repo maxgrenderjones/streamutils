@@ -275,19 +275,19 @@ Dependencies and installation
 -----------------------------
 
 ``streamutils`` supports python >=2.7 and >=3 by using the
-`six <https://pythonhosted.org/six/%20[pip:%20http://pip.readthedocs.org/en/latest/installing.html>`__
-library (its only mandatory dependency). Otherwise, it's implemented in
-pure python and doesn't require any external packages. Once it's been
-submitted, if you've already got the dependencies installed, you'll be
-able to install streamutils from `pypi <https://pypi.python.org/>`__ by
-running:
+`six <https://pythonhosted.org/six/>`__ library (its only mandatory
+dependency, though note that >=1.4.1 is required). Otherwise, it's
+implemented in pure python and doesn't require any external packages.
+Once it's been submitted, if you've already got the dependencies
+installed, you'll be able to install streamutils from
+`pypi <https://pypi.python.org/>`__ by running:
 
 ::
 
     pip install streamutils
 
-If you want pip to install the mandatory dependencies (i.e. [ix]) for
-you, then run:
+If you want pip to install the mandatory dependencies (i.e.
+`six <https://pythonhosted.org/six/>`__) for you, then run:
 
 ::
 
@@ -316,10 +316,11 @@ Alternatively, you can install from the source by running:
 
     python setup.py install
 
-If you don't have [pip] (the official way to install python packages,
-assuming your package manager isn't doing it for you) then use your
-package manager to install it, or if you don't have one (hello Windows
-users), download and run
+If you don't have
+`pip <http://pip.readthedocs.org/en/latest/installing.html>`__ (the
+official way to install python packages, assuming your package manager
+isn't doing it for you) then use your package manager to install it, or
+if you don't have one (hello Windows users), download and run
 https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 
 Status

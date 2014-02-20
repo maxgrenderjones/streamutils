@@ -168,7 +168,7 @@ A shout-out goes to David Beazley, who has written the most comprehensible (and 
 [pbs]: https://pypi.python.org/pypi/pbs
 [pypi]: https://pypi.python.org/
 [six]: https://pythonhosted.org/six/
-[pip: http://pip.readthedocs.org/en/latest/installing.html
+[pip]: http://pip.readthedocs.org/en/latest/installing.html
 
 License
 -------
