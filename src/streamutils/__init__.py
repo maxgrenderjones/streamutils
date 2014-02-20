@@ -308,7 +308,7 @@ def find(pathpattern=None, tokens=None):
 
 
 @wrap
-def words(n, word='\S+', outsep=' ', flags=0, tokens=None):
+def words(n, word='\S+', outsep=' ', names=None, flags=0, tokens=None):
     """
 
     :param n:
@@ -326,17 +326,24 @@ def words(n, word='\S+', outsep=' ', flags=0, tokens=None):
             raise ValueError('%s does not have %d words using word pattern %s' % (line, max(n), word))
         if outsep is not None:
             yield outsep.join([result[i-1] for i in n])
+        elif names:
+            yield OrderedDict((key, result[field] for key, field in zip(names, n)))
         else:
             yield [result[i-1] for i in n]
 
 @wrap
-def split(n, sep=None, outsep=' ', tokens=None):
+def split(n, sep=None, outsep=' ', names=None, tokens=None):
     n=wrapInIterable(n)
     for line in tokens:
         result=line.split(sep)
         if len(result)<max(n):
            raise ValueError('%s does not have %d words using separator %s' % (line, max(n), sep))
-        yield outsep.join(result[i-1] for i in n)
+        if outsep is not None:
+            yield outsep.join(result[i-1] for i in n)
+        elif names:
+            yield OrderedDict((key, result[field] for key, field in zip(names, n)))
+        else:
+            yield [result[i-1] for i in n]
 
 @wrap
 def tokenize(pattern, groups=None, names=None, match=True, flags=0, inject={}, tokens=None):

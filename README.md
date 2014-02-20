@@ -74,12 +74,13 @@ Implemented:
     they match
 -   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`);
     find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; generate a stream
-    of groups matched by the regexp (either as a list, or named as an `OrderedDict`); take the output of `tokens` and
-    call a user defined function on each element (e.g. to call `int` on fields that should be integers)
--   `sformat` to: take the output of `tokens` and format it using the `str.format` syntax (`format` is a builtin, so
-    it would be bad manners not to rename this function).
+    of groups matched by the regexp (either as a list, or named as an `OrderedDict`); take a `list` or `dict` (e.g. the
+    output of `tokens`) and call a user defined function on each element (e.g. to call `int` on fields that should be
+    integers)
+-   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `tokens`) and format it using the `str.format`
+    syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If
-    no function is given, it returns the items that a True (or False) in a boolean context
+    no function is given, it returns the items that are `True` (or `False`) in a conditional context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
 -   `transform`: to take user-defined function and use it to transform each line
 
