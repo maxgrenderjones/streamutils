@@ -189,7 +189,7 @@ def action(func, tokens=None):
 def write(fname=None, encoding=None, tokens=None):
     if not fname:
         for line in tokens:
-            print(line)
+            print(line.rstrip())
     elif isinstance(fname, string_types):
         with codecs.open(fname, encoding=encoding, mode='wb') if encoding else open(fname, mode='wU') as f:
             f.writelines(tokens)
@@ -327,7 +327,7 @@ def words(n, word='\S+', outsep=' ', names=None, flags=0, tokens=None):
         if outsep is not None:
             yield outsep.join([result[i-1] for i in n])
         elif names:
-            yield OrderedDict((key, result[field] for (key, field) in zip(names, n)))
+            yield OrderedDict(((key, result[field]) for (key, field) in zip(names, n)))
         else:
             yield [result[i-1] for i in n]
 
@@ -341,7 +341,7 @@ def split(n, sep=None, outsep=' ', names=None, tokens=None):
         if outsep is not None:
             yield outsep.join(result[i-1] for i in n)
         elif names:
-            yield OrderedDict((key, result[field] for key, field in zip(names, n)))
+            yield OrderedDict(((key, result[field]) for (key, field) in zip(names, n)))
         else:
             yield [result[i-1] for i in n]
 

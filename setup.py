@@ -14,7 +14,7 @@ setup(
       package_dir = {"" : "src"},
       packages=find_packages('src'),
       extras_require = {
-      	'deps': ['six'],
+      	'deps': ['six>=1.4.1'],
 	'sh': ['pbs'] if sys.platform=='win32' else ['sh']
       }
       )
