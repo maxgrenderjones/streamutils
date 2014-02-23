@@ -43,7 +43,7 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=sh.git.status() | matches('modified:') | words(1)
+    >>> edited=sh.git.status() | matches('modified:') | words(2)
     >>> for edit in edited:
     ...    print(edit)
     ...
@@ -56,7 +56,7 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=run(['git', 'status']) | matches('modified:') | words(1)
+    >>> edited=run(['git', 'status']) | matches('modified:') | words(2)
     >>> for edit in edited:
     ...    print(edit)
     ...
@@ -139,9 +139,8 @@ Terminators
 
 Implemented:
 
--  ``first``, ``last``, ``nth``, ``sort`` to: return the first item of
-   the stream; the last item of the stream; the nth item of the stream;
-   return a sorted list of the items in a stream
+-  ``first``, ``last``, ``nth`` to: return the first item of the stream;
+   the last item of the stream; the nth item of the stream
 -  ``count``, ``bag``, ``sort``: to return the number of tokens in the
    stream (``wc``); a ``collections.Counter`` (i.e. ``dict`` subclass)
    with unique tokens as keys and a count of their occurences as values;
