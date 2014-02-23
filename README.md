@@ -13,7 +13,7 @@ Enough already! What does it do? Perhaps it's best explained with an example. Su
 
 ```python
 >>> from streamutils import *
->>> name_and_userid = stream('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
+>>> name_and_userid = read('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
 >>> name_and_userid
 johndoe 1000
 ```
@@ -21,7 +21,7 @@ johndoe 1000
 Or perhaps you need to start off with output from a real command (streamutils wraps [sh] and [pbs]):
 ```python
 >>> from streamutils import *
->>> edited=sh.git.status() | matches('modified:') | words(1)
+>>> edited=sh.git.status() | matches('modified:') | words(2)
 >>> for edit in edited:
 ...    print(edit)
 ...
@@ -31,7 +31,7 @@ src/streamutils/__init__.py
 (Or alternatively, if you don't want to install [sh]/[pbs])
 ```python
 >>> from streamutils import *
->>> edited=run(['git', 'status']) | matches('modified:') | words(1)
+>>> edited=run(['git', 'status']) | matches('modified:') | words(2)
 >>> for edit in edited:
 ...    print(edit)
 ...
@@ -72,7 +72,7 @@ Not yet implemented:
 
 ###Terminators
 Implemented:
--   `first`, `last`, `nth`, `sort` to: return the first item of the stream; the last item of the stream; the nth item of the stream; return a sorted list of the items in a stream
+-   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
 -   `count`, `bag`, `sort`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
 -   `action`: for every token, call a user-defined function
@@ -112,8 +112,7 @@ There are a number of tenets to the API philosophy, which is intended to maximis
 -   `tokens` is the last keyword argument of each function
 -   If it's sensible for the argument to a function to be e.g. a string or a list of strings then both will be supported (so if you pass a list of filenames to `read` (via `fname`), it will `read` each one in turn).
 -	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with `\n`)
--   `head(5)` returns the first 5 items, similarly `tail(5)` the last 5 items. `search(pattern, 2)`, `word(3)` and `nth(4)` return the second group, third 'word' and fourth item (not the third, fourth and fifth items). This therefore
-allows `word(0)` to reutrn all words. Using zero-based indexing in this case feels wrong to me - is that too confusing/suprising? (Note that this matches how the coreutils behave, and besides, python is inconsistent here - `group(1)` is the first not second group, as `group(0)` is reserved for the whole pattern).
+-   `head(5)` returns the first 5 items, similarly `tail(5)` the last 5 items. `search(pattern, 2)`, `word(3)` and `nth(4)` return the second group, third 'word' and fourth item (not the third, fourth and fifth items). This therefore allows `word(0)` to return all words. Using zero-based indexing in this case feels wrong to me - is that too confusing/suprising? (Note that this matches how the coreutils behave, and besides, python is inconsistent here - `group(1)` is the first not second group, as `group(0)` is reserved for the whole pattern).
 
 I would be open to creating a `coreutils` (or similarly named) subpackage, which aims to roughly replicate the names, syntax and flags of the `coreutils` toolset (i.e. `grep`, `cut`, `wc` and friends), but only if they are implemented as thin wrappers around streamutils functions. After all, the functionality they provide is tried and tested, even if their names were designed primarily to be short to type (rather than logical, memorable or discoverable).
 

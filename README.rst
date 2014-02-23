@@ -32,7 +32,7 @@ above:
 .. code:: python
 
     >>> from streamutils import *
-    >>> name_and_userid = stream('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
+    >>> name_and_userid = read('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
     >>> name_and_userid
     johndoe 1000
 
@@ -43,7 +43,7 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=sh.git.status() | matches('modified:') | words(1)
+    >>> edited=sh.git.status() | matches('modified:') | words(2)
     >>> for edit in edited:
     ...    print(edit)
     ...
@@ -56,7 +56,7 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=run(['git', 'status']) | matches('modified:') | words(1)
+    >>> edited=run(['git', 'status']) | matches('modified:') | words(2)
     >>> for edit in edited:
     ...    print(edit)
     ...
@@ -139,9 +139,8 @@ Terminators
 
 Implemented:
 
--  ``first``, ``last``, ``nth``, ``sort`` to: return the first item of
-   the stream; the last item of the stream; the nth item of the stream;
-   return a sorted list of the items in a stream
+-  ``first``, ``last``, ``nth`` to: return the first item of the stream;
+   the last item of the stream; the nth item of the stream
 -  ``count``, ``bag``, ``sort``: to return the number of tokens in the
    stream (``wc``); a ``collections.Counter`` (i.e. ``dict`` subclass)
    with unique tokens as keys and a count of their occurences as values;
@@ -163,7 +162,7 @@ How does it work?
 You don't need to know this to use the library, but you may be curious
 nonetheless - if you want, you can skip this section. (Warning: this may
 make your head hurt - it did mine). It's all implemented through the
-python magic of a duck-typing contracts, decorators, generators and
+python magic of duck-typing contracts, decorators, generators and
 overloaded operators. (So wrong it's right? You decide...) Let's explain
 it with the example of a naive pipeline designed to find module-level
 function names within ``ez_setup.py``:
@@ -172,7 +171,7 @@ function names within ``ez_setup.py``:
 
     >>> from streamutils import *
     >>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
-    >>> s | first()                                             #Only now is read actually called
+    >>> s | first()                                           #Only now is read actually called
     u'__python_cmd'
 
 So what happened?
@@ -259,9 +258,10 @@ These tenets are:
 -  ``head(5)`` returns the first 5 items, similarly ``tail(5)`` the last
    5 items. ``search(pattern, 2)``, ``word(3)`` and ``nth(4)`` return
    the second group, third 'word' and fourth item (not the third, fourth
-   and fifth items). Using zero-based indexing in this case feels wrong
-   to me - is that too confusing/suprising? (Note that this matches how
-   the coreutils behave, and besides, python is inconsistent here -
+   and fifth items). This therefore allows ``word(0)`` to return all
+   words. Using zero-based indexing in this case feels wrong to me - is
+   that too confusing/suprising? (Note that this matches how the
+   coreutils behave, and besides, python is inconsistent here -
    ``group(1)`` is the first not second group, as ``group(0)`` is
    reserved for the whole pattern).
 
