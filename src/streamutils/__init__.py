@@ -35,7 +35,6 @@ sh=SHWrapper()
 
 class ComposableFunction(Callable):
 
-
     def __init__(self, func, tokenskw):
 
         """
@@ -45,17 +44,18 @@ class ComposableFunction(Callable):
         """
         self.func=func
         self.tokenskw=tokenskw
-        #update_wrapper(self, func)
 
 
     def __call__(self, *args, **kwargs):
         #print 'Calling via ConnectingGenerator'
         return ConnectingGenerator(self.func, self.tokenskw, args, kwargs)
     def __getattr__(self, name):
-        #Kludge (ish) to allow sh's attribute access to work
         f=getattr(self.func, name)
-        if (callable(f)):
-            return wrap(f)
+        #Kludge (ish) to allow sh's attribute access to work
+        if name !='__get__' and callable(f): # Need to only follow this path if it's a sh callable.
+             return wrap(f)
+        else:
+             return f
 
 class ConnectingGenerator(Iterable):
     def __init__(self, func, tokenskw, args, kwargs):
@@ -92,6 +92,9 @@ class ConnectingGenerator(Iterable):
         else:
             raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other))
 
+    def __getattr__(self, name):
+        return getattr(self.func, name)
+
 class Terminator(Callable):
     def __init__(self, func, tokenskw):
         #print('Create a terminating function by wrapping %s which takes tokens as "%s"' % (func.__name__, tokenskw))
@@ -99,12 +102,22 @@ class Terminator(Callable):
         self.tokenskw=tokenskw
         #self.__doc__=func.__doc__ #makes docstrings work
 
+    # @property
+    # def __doc__(self):
+    #     return self.func.__doc__ if self.func else 'Doc for a Terminator'
+    #
+    # @property
+    # def __name__(self):
+    #     return self.func.__name__ if self.func else 'Terminator'
+
     def __call__(self, *args, **kwargs):
         self.args=args
         self.kwargs=kwargs
         return self #We don't do anything yet, as tokens won't be set yet - func is called by the
                     #OR inside the ConnectingGenerator, after setting tokens
 
+    def __getattr__(self, name):
+        return getattr(self.func, name)
 
 
 def _eopen(fname, encoding=None):
@@ -199,6 +212,8 @@ def _ntodict(results, n, names, inject={}):
             else:
                 return results
 
+__test__ = {}
+
 
 def wrap(func, tokenskw='tokens'):
     '''
@@ -209,8 +224,8 @@ def wrap(func, tokenskw='tokens'):
     '''
     cf = ComposableFunction(func, tokenskw)
     #I'm pretty sure newf = update_wrapper(newf, func) ought to work, but it doesn't. I'd love to know why
-    cf.__doc__ = func.__doc__
-    cf.__name__= func.__name__
+    cf = update_wrapper(cf, func)
+    __test__[func.__name__]=func
     return cf
 
 def wrapTerminator(func, tokenskw='tokens'):
@@ -222,8 +237,10 @@ def wrapTerminator(func, tokenskw='tokens'):
     :return: A Terminator function
     """
     t = Terminator(func, tokenskw)
-    t.__doc__ = func.__doc__
-    t.__name__ = func.__name__
+    # t.__doc__ = func.__doc__
+    # t.__name__ = func.__name__
+    t = update_wrapper(t, func)
+    __test__[func.__name__]=func
     return t
 
 def wrapInIterable(item):
@@ -274,7 +291,13 @@ def last(default=None, tokens=None,):
 
 
 @wrapTerminator
-def all(tokens=None):
+def aslist(tokens=None):
+    """
+    Returns the output of the stream as a list
+
+    :param tokens: Iterable object providing tokens (set by the pipeline)
+    :return: a `list` containing all the tokens in the pipeline
+    """
     return list(tokens)
 
 @wrapTerminator
@@ -570,9 +593,9 @@ def find(pathpattern=None, tokens=None):
     Searches for files the match a given pattern. For example
 
     >>> from streamutils import *
-    >>> find('../src/*.py') | replace(os.sep, '/') | write()    #Only searches src directory
-    >>> find('../src/**/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
-    ../src/streamutils/__init__.py
+    >>> find('src/*.py') | replace(os.sep, '/') | write()    #Only searches src directory
+    >>> find('src/**/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
+    src/streamutils/__init__.py
 
     :param pathpattern: ``glob``-style pattern
     :param tokens: A list of ``glob``-style patterns to search for
@@ -681,15 +704,15 @@ def convert(converters, defaults={}, tokens=None):
 
     >>> from streamutils import *
     >>> lines=['Alice in Wonderland 1951', 'Dumbo 1941']
-    >>> search('(.*) (\d+)',group=None, tokens=lines) | write()
-    ['Alice in Wonderland', '1951']
-    ['Dumbo', '1941']
-    >>> search('(.*) (\d+)', group=None, tokens=lines) | convert({2: int}) | write() #Note it's the second field
-    ['Alice in Wonderland', 1951]
-    ['Dumbo', 1941]
-    >>> search('(.*) (\d+)', group=None, names=['Title', 'Year'], tokens=lines) | convert({'Year': int}) | write()
-    OrderedDict([('Title', 'Alice in Wonderland'), ('Year', 1951)])
-    OrderedDict([('Title', 'Dumbo'), ('Year', 1941)])
+    >>> search('(.*) (\d+)',group=None, tokens=lines) | sformat('{0} was filmed in {1}') | write()
+    Alice in Wonderland was filmed in 1951
+    Dumbo was filmed in 1941
+    >>> search('(.*) (\d+)', group=None, tokens=lines) | convert({2: int}) | sformat('{0} was filmed in {1:d}') | write() #Note it's the second field
+    Alice in Wonderland was filmed in 1951
+    Dumbo was filmed in 1941
+    >>> search('(.*) (\d+)', group=None, names=['Title', 'Year'], tokens=lines) | convert({'Year': int}) | sformat('{0} was filmed in {1:d}') | write()
+    Alice in Wonderland was filmed in 1951
+    Dumbo was filmed in 1941
 
     :param converters: ``dict`` Function that converts a field from one form to another
     :param defaults: ``dict`` defaults to use if the converter function returns `ValueError`
@@ -752,10 +775,12 @@ def sformat(pattern, tokens=None):
             raise TypeError('Format expects a sequence or a mapping - got a %s' % type(token))
 
 if __name__=='__main__':
-    output= read('__init__.py') | matches('def') | matches('streamutils.py') | search('(.prin.)', n=0)
-    output= head(10, '__init__.py')
+    import doctest
+    doctest.testmod()
+    output= read('streamutils/__init__.py') | matches('def') | matches('streamutils.py') | search('(.prin.)', n=0)
+    output= head(10, 'streamutils/__init__.py')
     output= printList() | matches('a')
-    output=tail(10, '__init__.py')
+    output=tail(10, 'streamutils/__init__.py')
     for f in output:
         print('Result: %s ' % f.strip())
     print('Done')
