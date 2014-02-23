@@ -1,5 +1,8 @@
-Streamutils
-===========
+Introduction to streamutils
+===========================
+
+Motivation
+----------
 
 Have you ever been jealous of friends who know more commandline magic
 than you? Perhaps you're a python user who feels guilty that you never
@@ -157,14 +160,13 @@ its ``tokens`` argument.
 How does it work?
 -----------------
 
-| You don't need to know this to use the library, but you may be curious
+You don't need to know this to use the library, but you may be curious
 nonetheless - if you want, you can skip this section. (Warning: this may
 make your head hurt - it did mine). It's all implemented through the
 python magic of a duck-typing contracts, decorators, generators and
 overloaded operators. (So wrong it's right? You decide...) Let's explain
 it with the example of a naive pipeline designed to find module-level
-function
-| names within ``ez_setup.py``:
+function names within ``ez_setup.py``:
 
 .. code:: python
 
