@@ -11,7 +11,7 @@ Enough already! What does it do? Perhaps it's best explained with an example. Su
 
 ```python
 >>> from streamutils import *
->>> name_and_userid = stream('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
+>>> name_and_userid = read('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
 >>> name_and_userid
 johndoe 1000
 ```
