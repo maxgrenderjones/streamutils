@@ -142,7 +142,7 @@ If you don't have [pip], which is now the official way to install python package
 Status
 ------
 `streamutils` is currently (pre)-alpha status. By which I mean:
--   I think it works fine, but not all code paths have been tested (and indeed it has no tests, yet)
+-   I think it works fine, but the tests are incomplete and therefore not all paths have been tested
 -   The API is unstable, i.e. the names of functions are still in flux, the order of the positional arguments may change, and the order of keyword arguments is almost guaranteed to change
 
 So why release?
@@ -156,7 +156,8 @@ Contribute
 
 - Issue Tracker: http://github.com/maxgrenderjones/streamutils/issues
 - Source Code: http://github.com/maxgrenderjones/streamutils
-- API documentation (will be at): http://streamutils.readthedocs.org/ or http://pythonhosted.org/streamutils/ (or both?)
+- API documentation: http://streamutils.readthedocs.org/
+- Continuous integration: ![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")
 
 Acknowledgements and References
 -------------------------------
