@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 # coding: utf-8
 # vim: set tabstop=4 shiftwidth=4 expandtab:
 """
@@ -12,7 +12,11 @@ from six import StringIO, string_types, integer_types, MAXSIZE
 from six.moves import filter, filterfalse, zip   # This works - moves is a fake module
 
 import re, time, codecs, subprocess, os, glob, locale, shlex, sys
-from collections import Iterable, Callable, Iterator, deque, OrderedDict, Mapping, Sequence, Counter
+from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence, Counter
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict #To use OrderedDict backport
 from itertools import chain, islice
 from itertools import count as icount
 from functools import update_wrapper
