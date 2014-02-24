@@ -427,7 +427,7 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
             tokens.close()
 
 @wrap
-def sslice(start=0, stop=sys.maxint, step=1, fname=None, encoding=None, tokens=None):
+def sslice(start=0, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None):
     """
 
     :param start:
