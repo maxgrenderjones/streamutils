@@ -18,7 +18,7 @@ Enough already! What does it do? Perhaps it's best explained with an example. Su
 johndoe 1000
 ```
 
-Or perhaps you need to start off with output from a real command (streamutils wraps [sh] and [pbs]):
+Or perhaps you need to start off with output from a real command (streamutils wraps [sh]/[pbs]):
 ```python
 >>> from streamutils import *
 >>> edited=sh.git.status() | matches('modified:') | words(2)
@@ -119,11 +119,11 @@ I would be open to creating a `coreutils` (or similarly named) subpackage, which
 Dependencies and installation
 -----------------------------
 
-`streamutils` supports python >=2.7 (it needs `OrderedDict`), pypy and python >=3 by using the [six] library (its only mandatory dependency, though note that >=1.4.1 is required). Otherwise, it's implemented in pure python and doesn't require any external packages. Once it's been submitted, if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
+`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). Once it's been submitted, if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
 
     pip install streamutils
 
-If you want pip to install the mandatory dependencies (i.e. [six]) for you, then run:
+If you want pip to install the mandatory dependencies for you, then run:
 
     pip install streamutils[deps]
 
@@ -157,7 +157,7 @@ Contribute
 - Issue Tracker: http://github.com/maxgrenderjones/streamutils/issues
 - Source Code: http://github.com/maxgrenderjones/streamutils
 - API documentation: http://streamutils.readthedocs.org/
-- Continuous integration: ![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")
+- Continuous integration: [![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/)
 
 Acknowledgements and References
 -------------------------------
