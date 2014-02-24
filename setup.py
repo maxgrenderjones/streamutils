@@ -14,6 +14,7 @@ version=sys.version_info
 deps=['six>=1.4.1']
 if version[0]==2 and version[1]<7: # version_info is a tuple in python2.6
     deps.append('ordereddict')
+    deps.append('counter')
 
 
 setup(

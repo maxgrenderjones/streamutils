@@ -12,11 +12,12 @@ from six import StringIO, string_types, integer_types, MAXSIZE
 from six.moves import filter, filterfalse, zip   # This works - moves is a fake module
 
 import re, time, codecs, subprocess, os, glob, locale, shlex, sys
-from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence, Counter
+from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
 try:
-    from collections import OrderedDict
+    from collections import OrderedDict, Counter
 except ImportError:
     from ordereddict import OrderedDict #To use OrderedDict backport
+    from counter import Counter #To use Counter backport
 from itertools import chain, islice
 from itertools import count as icount
 from functools import update_wrapper
