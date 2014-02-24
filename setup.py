@@ -12,7 +12,7 @@ version=sys.version_info
 
 
 deps=['six>=1.4.1']
-if version['major']==2 and version['minor']<7:
+if version.major==2 and version.minor<7:
     deps.append('ordereddict')
 
 
