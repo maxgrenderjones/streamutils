@@ -8,7 +8,7 @@ Some implementation details from http://www.dabeaz.com/generators/
 
 from __future__ import unicode_literals, print_function, division
 
-from six import StringIO, string_types, integer_types
+from six import StringIO, string_types, integer_types, MAXSIZE
 from six.moves import filter, filterfalse, zip   # This works - moves is a fake module
 
 import re, time, codecs, subprocess, os, glob, locale, shlex, sys
@@ -387,7 +387,7 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
     try:
         tokens=_gettokens(fname, encoding, tokens)
         if isinstance(n, integer_types):
-            for line in islice(tokens, skip, skip+n if n else sys.maxint):
+            for line in islice(tokens, skip, skip+n if n else MAXSIZE):
                 yield line
         else:
             if skip:

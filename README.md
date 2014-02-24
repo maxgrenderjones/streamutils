@@ -119,7 +119,7 @@ I would be open to creating a `coreutils` (or similarly named) subpackage, which
 Dependencies and installation
 -----------------------------
 
-`streamutils` supports python >=2.7 and >=3 by using the [six] library (its only mandatory dependency, though note that >=1.4.1 is required). Otherwise, it's implemented in pure python and doesn't require any external packages. Once it's been submitted, if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
+`streamutils` supports python >=2.7 (it needs `OrderedDict`) and >=3 by using the [six] library (its only mandatory dependency, though note that >=1.4.1 is required). Otherwise, it's implemented in pure python and doesn't require any external packages. Once it's been submitted, if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
 
     pip install streamutils
 
