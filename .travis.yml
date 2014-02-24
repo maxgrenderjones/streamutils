@@ -6,5 +6,5 @@ python:
     - "pypy"
 install: 
     - "pip install --upgrade setuptools"
-    - "pip install -e .[deps]"
+    - "pip install -e .[deps,sh]"
 script: py.test --doctest-modules src
