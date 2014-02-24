@@ -6,5 +6,7 @@ python:
     - "3.2"
     - "3.3"
     - "pypy"
-install: "pip install -e .[deps]"
+install: 
+    - "pip install --upgrade setuptools"
+    - "pip install -e .[deps]"
 script: py.test --doctest-modules src
