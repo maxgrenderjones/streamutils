@@ -276,13 +276,13 @@ short to type (rather than logical, memorable or discoverable).
 Dependencies and installation
 -----------------------------
 
-``streamutils`` supports python >=2.7 and >=3 by using the
-`six <https://pythonhosted.org/six/>`__ library (its only mandatory
-dependency, though note that >=1.4.1 is required). Otherwise, it's
-implemented in pure python and doesn't require any external packages.
-Once it's been submitted, if you've already got the dependencies
-installed, you'll be able to install streamutils from
-`pypi <https://pypi.python.org/>`__ by running:
+``streamutils`` supports python >=2.7 (it needs ``OrderedDict``), pypy
+and python >=3 by using the `six <https://pythonhosted.org/six/>`__
+library (its only mandatory dependency, though note that >=1.4.1 is
+required). Otherwise, it's implemented in pure python and doesn't
+require any external packages. Once it's been submitted, if you've
+already got the dependencies installed, you'll be able to install
+streamutils from `pypi <https://pypi.python.org/>`__ by running:
 
 ::
 
@@ -330,8 +330,8 @@ Status
 
 ``streamutils`` is currently (pre)-alpha status. By which I mean:
 
--  I think it works fine, but not all code paths have been tested (and
-   indeed it has no tests, yet)
+-  I think it works fine, but the tests are incomplete and therefore not
+   all paths have been tested
 -  The API is unstable, i.e. the names of functions are still in flux,
    the order of the positional arguments may change, and the order of
    keyword arguments is almost guaranteed to change
@@ -352,8 +352,8 @@ Contribute
 
 -  Issue Tracker: http://github.com/maxgrenderjones/streamutils/issues
 -  Source Code: http://github.com/maxgrenderjones/streamutils
--  API documentation (will be at): http://streamutils.readthedocs.org/
-   or http://pythonhosted.org/streamutils/ (or both?)
+-  API documentation: http://streamutils.readthedocs.org/
+-  Continuous integration: |Build Status|
 
 Acknowledgements and References
 -------------------------------
@@ -366,3 +366,5 @@ License
 -------
 
 The project is licensed under the Eclipse Public License - v 1.0.
+
+.. |Build Status| image:: https://travis-ci.org/maxgrenderjones/streamutils.png
