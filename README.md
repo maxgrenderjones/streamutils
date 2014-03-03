@@ -79,39 +79,18 @@ Implemented:
 
 Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first function of the pipeline as its `tokens` argument.
 
-How does it work?
------------------
-You don't need to know this to use the library, but you may be curious nonetheless - if you want, you can skip this section. (Warning: this may make your head hurt - it did mine). It's all implemented through the python magic of duck-typing contracts, decorators, generators and overloaded operators. (So wrong it's right? You decide...) Let's explain it with the example of a naive pipeline designed to find module-level function names within `ez_setup.py`:
-```python
->>> from streamutils import *
->>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
->>> s | first()                                           #Only now is read actually called
-u'__python_cmd'
-```
-So what happened?
-
-In order:
-
--   Functions used in pipelines are expected to (optionally) take as input an `Iterable` thing (as a keyword argument called `tokens` - in future, it should be possible to use any name), and use it to return an `Iterable` thing, or `yield` a series of values
--   Before using a function in a pipeline, it must be `wrap`-ped (via the `@wrap` decorator). This wraps the function in a `ComposableFunction` which defers execution, so, taking `read` (equivalent of unix `cat`) as an example, if you write `s=read('ez_setup.py')` then `read` not actually called, but the `__call__` method of wrapping `ComposableFunction`. This returns a `ConnectingGenerator` (which implements the basic `generator` functions) which waits for something to iterate over `s` or to compose (i.e. `|`) `s` with another `ConnectingGenerator`. When something starts iterating over a `ConnectingGenerator`, it passes through the values `yield`-ed by the  underlying function (i.e. `read`). So far, so unremarkable.
--   But, and here's where the magic happens, if you `|` `s` with another `wrap`-ed function e.g. `search`, then the `tokens` keyword argument of `read` is assigned the generator that will yield the output of the real `read` function. But still, nothing has happened - the functions have simply been wired together
-
-Two options for what you do next:
-
--   You iterate over `s`, in which case the functions are finally called and the results are passed down the chain. (Your for loop would iterate over the function names in `ez_setup.py`)
--   You compose `s` with a function (in this case `first`)  that has been decorated with `wrapTerminator` to give a `Terminator` function. A `Terminator` function completes the pipeline and will return a value, not another `generator`. (Strictly speaking, when you call a `Terminator` nothing happens. It's only when the `__or__` function (i.e. the `|` or `or` operator) is called betwen a `ConnectingGenerator` and a `Terminator` that the value returned by the function wrapped in a `Terminator` - in this case `first()` is called, and the chain of generators yield their values.
-
 API Philosophy & Conventions
 ----------------------------
 There are a number of tenets to the API philosophy, which is intended to maximise backward and forward compatibility and minimise surprises - while the API is in flux, if functions don't fit the tenets (or tenets turn out to be flawed - feedback welcome!) then the API or tenets will be changed. If you remember these, you should be able to guess (or at least remember) what a function will be called, and how to call it. These tenets are:
 
 -   Functions should have sensible names (none of this `cat` / `wc` nonsense - apologies to you who are so trained as to think that `cat` *is* the sensible name...)
--   These names should be as close as possible to the name of the related function from the python library. It's ok if the function names clash (e.g. there's a function called `search` in `re` too), but not if they clash with builtin functions - in that case they get an `s` prepended (hence `sfilter`, `sfilterfalse`, `sformat`).
--   If you need to avoid clashes, `import streamutils as su` (which has the double benefit of being nice and terse to keep your pipelines short, and has the benefit of making you [all powerful](xkcd.com/149/))
--   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return, is the first argument of `head`), then `fname`, which allows you to avoid using `read` if you really want. To be safe, apart from for `read`, `head`, `tail` and `follow`, `fname` should be called as a keyword argument as it marks the first argument whose position is not guaranteed to be stable.
+-   These names should be as close as possible to the name of the related function from the python library. It's ok if the function names clash (e.g. there's a function called `search` in `re` too), but not if they clash with builtin functions - in that case they get an `s` prepended (hence `sfilter`, `sfilterfalse`, `sformat`). (For discussion: is this the right idea? Would it be easier if all functions had s prefixes?)
+-   If you need to avoid clashes, `import streamutils as su` (which has the double benefit of being nice and terse to keep your pipelines short, and will help make you [all powerful](xkcd.com/149/))
+-   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return, is the first argument of `head`) and their order should be stable over time. For brevity, they should be given sensible defaults. If additional keyword arguments are added, they will be added after existing ones. After the positional arguments comes `fname`, which allows you to avoid using `read`. To be safe, apart from for `read`, `head`, `tail` and `follow`, `fname` should therefore be called as a keyword argument as it marks the first argument whose position is not guaranteed to be stable.
 -   `tokens` is the last keyword argument of each function
 -   If it's sensible for the argument to a function to be e.g. a string or a list of strings then both will be supported (so if you pass a list of filenames to `read` (via `fname`), it will `read` each one in turn).
 -	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with `\n`)
+-   This being the 21st century, streamutils opens files in unicode mode (it uses `io.open` in text mode). The benefits of slow-processing outweigh the costs. I am not opposed to adding `readbytes` if there is demand (which would return `str` or `bytes` depending on your python version)
 -   `head(5)` returns the first 5 items, similarly `tail(5)` the last 5 items. `search(pattern, 2)`, `word(3)` and `nth(4)` return the second group, third 'word' and fourth item (not the third, fourth and fifth items). This therefore allows `word(0)` to return all words. Using zero-based indexing in this case feels wrong to me - is that too confusing/suprising? (Note that this matches how the coreutils behave, and besides, python is inconsistent here - `group(1)` is the first not second group, as `group(0)` is reserved for the whole pattern).
 
 I would be open to creating a `coreutils` (or similarly named) subpackage, which aims to roughly replicate the names, syntax and flags of the `coreutils` toolset (i.e. `grep`, `cut`, `wc` and friends), but only if they are implemented as thin wrappers around streamutils functions. After all, the functionality they provide is tried and tested, even if their names were designed primarily to be short to type (rather than logical, memorable or discoverable).
@@ -150,6 +129,28 @@ So why release?
 -   Because I value feedback on the API - if you think the names of functions or their arguments would be more easily understood if they were changed then open an issue and let's have the debate
 -   Because it's a great demonstration of the crazy stuff you can do in python by overloading operators
 -   Why not?
+
+How does it work?
+-----------------
+You don't need to know this to use the library, but you may be curious nonetheless - if you want, you can skip this section. (Warning: this may make your head hurt - it did mine). It's all implemented through the python magic of duck-typing contracts, decorators, generators and overloaded operators. (So wrong it's right? You decide...) Let's explain it with the example of a naive pipeline designed to find module-level function names within `ez_setup.py`:
+```python
+>>> from streamutils import *
+>>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
+>>> s | first()                                           #Only now is read actually called
+u'__python_cmd'
+```
+So what happened?
+
+In order:
+
+-   Functions used in pipelines are expected to (optionally) take as input an `Iterable` thing (as a keyword argument called `tokens` - in future, it should be possible to use any name), and use it to return an `Iterable` thing, or `yield` a series of values
+-   Before using a function in a pipeline, it must be `wrap`-ped (via the `@wrap` decorator). This wraps the function in a `ComposableFunction` which defers execution, so, taking `read` (equivalent of unix `cat`) as an example, if you write `s=read('ez_setup.py')` then `read` not actually called, but the `__call__` method of wrapping `ComposableFunction`. This returns a `ConnectingGenerator` (which implements the basic `generator` functions) which waits for something to iterate over `s` or to compose (i.e. `|`) `s` with another `ConnectingGenerator`. When something starts iterating over a `ConnectingGenerator`, it passes through the values `yield`-ed by the  underlying function (i.e. `read`). So far, so unremarkable.
+-   But, and here's where the magic happens, if you `|` `s` with another `wrap`-ed function e.g. `search`, then the `tokens` keyword argument of `read` is assigned the generator that will yield the output of the real `read` function. But still, nothing has happened - the functions have simply been wired together
+
+Two options for what you do next:
+
+-   You iterate over `s`, in which case the functions are finally called and the results are passed down the chain. (Your for loop would iterate over the function names in `ez_setup.py`)
+-   You compose `s` with a function (in this case `first`)  that has been decorated with `wrapTerminator` to give a `Terminator` function. A `Terminator` function completes the pipeline and will return a value, not another `generator`. (Strictly speaking, when you call a `Terminator` nothing happens. It's only when the `__or__` function (i.e. the `|` or `or` operator) is called betwen a `ConnectingGenerator` and a `Terminator` that the value returned by the function wrapped in a `Terminator` - in this case `first()` is called, and the chain of generators yield their values.
 
 Contribute
 ----------

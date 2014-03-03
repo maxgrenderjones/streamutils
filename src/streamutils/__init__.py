@@ -8,16 +8,22 @@ Some implementation details from http://www.dabeaz.com/generators/
 
 from __future__ import unicode_literals, print_function, division
 
-from six import StringIO, string_types, integer_types, MAXSIZE
-from six.moves import filter, filterfalse, zip   # This works - moves is a fake module
+from six import StringIO, string_types, integer_types, MAXSIZE, PY3
+from six.moves import filter, filterfalse, zip   # These work - moves is a fake module
+from six.moves.urllib.parse import urlparse
+from six.moves.urllib.request import urlopen
 
-import re, time, codecs, subprocess, os, glob, locale, shlex, sys
+import re, time, subprocess, os, glob, locale, shlex
+
+from io import open, TextIOWrapper
+from contextlib import closing
+
 from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
 try:
     from collections import OrderedDict, Counter
 except ImportError:
     from ordereddict import OrderedDict #To use OrderedDict backport
-    from counter import Counter #To use Counter backport
+    from counter import Counter         #To use Counter backport
 from itertools import chain, islice
 from itertools import count as icount
 from functools import update_wrapper
@@ -130,13 +136,22 @@ def _eopen(fname, encoding=None):
     Tries to guess what encoding to use to open a file based on first few lines. Supports xml and python
     declaration as per http://www.python.org/dev/peps/pep-0263/
     '''
-    if not encoding:
-        encoding=head(tokens=open(fname), n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
-    if encoding:
-        #print('Opening file %s with encoding %s' % (fname, encoding))
-        return codecs.open(fname, encoding=encoding)
+
+    if re.search('^[a-z+]+[:][/]{2}', fname):
+        if PY3:
+            return TextIOWrapper(urlopen(fname), encoding=encoding)
+        else:
+            return closing(urlopen(fname))  # This should be unicode, or at least universal new-line wrapped, but there's a bug
+                                            # in python whereby TextIOWrapper doesn't play nice with urlopen that got fixed
+                                            # in python 3 @TODO wrap output of urlopen with unicode and newline support
     else:
-        return open(fname)
+        if not encoding:
+            encoding=head(tokens=open(fname), n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
+        if encoding:
+            #print('Opening file %s with encoding %s' % (fname, encoding))
+            return open(fname, encoding=encoding)
+        else:
+            return open(fname)
 
 def _gettokens(fname, encoding=None, tokens=None):
     if fname:
@@ -261,10 +276,6 @@ def wrapInIterable(item):
         return [item]
 
 @wrap
-def printList():
-    return ['a', 'b', 'c']
-
-@wrap
 def run(args, err=False, cwd=None, env=None, tokens=None, ):
     stdin=None if tokens is None else StringIO("".join(list(tokens)))
     if isinstance(args, string_types):
@@ -301,12 +312,20 @@ def aslist(tokens=None):
     Returns the output of the stream as a list
 
     :param tokens: Iterable object providing tokens (set by the pipeline)
-    :return: a `list` containing all the tokens in the pipeline
+    :return: a ``list`` containing all the tokens in the pipeline
     """
     return list(tokens)
 
 @wrapTerminator
 def nth(n, default=None, tokens=None):
+    """
+    Returns the nth item in the stream, or a default if the list has less than n items
+
+    :param n: The item to return (first is 1)
+    :param default: The default to use if the stream has less than n items
+    :param tokens: The items in the pipeline
+    :return: the nth item
+    """
     cur=1
     for line in tokens:
         if cur==n:
@@ -315,15 +334,51 @@ def nth(n, default=None, tokens=None):
     return default
 
 @wrapTerminator
-def sort(cmp=None, key=None, reverse=False, tokens=None):
-    return sorted(tokens, cmp, key, reverse)
+def ssorted(cmp=None, key=None, reverse=False, tokens=None):
+    """
+    Sorts the output of the stream (see documentation for py:func:`sorted`)
+
+    >>> from streamutils import *
+    >>> for line in (find('*.py') | replace(os.sep, '/') | ssorted()):
+    ...     print(line)
+    ez_setup.py
+    setup.py
+
+    """
+    if tokens:
+        return sorted(tokens, cmp, key, reverse)
+    else:
+        return tokens
 
 @wrapTerminator
 def count(tokens=None):
+    """
+    Counts the number of items that pass through the stream (cf ``wc -l``)
+
+    >>> from streamutils import *
+    >>> lines = ['hi', 'ho', 'hi', 'ho', "it's", 'off', 'to', 'work', 'we', 'go']
+    >>> matches('h.', tokens=lines) | count()
+    4
+
+    :param tokens: Things to count
+    :return: number of items in the stream as an ``int``
+    """
     return sum(1 for line in tokens)
 
 @wrapTerminator
 def bag(tokens=None):
+    """
+    Counts the number of occurences of each of the elements of the stream
+
+    >>> from streamutils import *
+    >>> lines = ['hi', 'ho', 'hi', 'ho', "it's", 'off', 'to', 'work', 'we', 'go']
+    >>> count = matches('h.', tokens=lines) | bag()
+    >>> count['hi']
+    2
+
+    :param tokens: list of items to count
+    :return: A :py:class:`collections.Counter`
+    """
     return Counter(tokens)
 
 @wrapTerminator
@@ -333,11 +388,20 @@ def action(func, tokens=None):
 
 @wrapTerminator
 def write(fname=None, encoding=None, tokens=None):
+    """
+    Writes the output of the stream to a file, or via ``print`` if no file is supplied. Calls to ``print`` include
+    a call to :py:func:`str.rstrip` to remove trailing newlines
+
+    :param fname: If `str`, filename to write to, otherwise open file-like object to write to. Default of `None` implies
+                    write to standard output
+    :param encoding: Encoding to use to write to the file
+    :param tokens: Lines to write to teh file
+    """
     if not fname:
         for line in tokens:
             print(line.rstrip() if isinstance(line, string_types) else line)
     elif isinstance(fname, string_types):
-        with codecs.open(fname, encoding=encoding, mode='wb') if encoding else open(fname, mode='wU') as f:
+        with open(fname, encoding=encoding, mode='wt') as f:
             f.writelines(tokens)
     else:
         for line in tokens:
@@ -463,6 +527,17 @@ def follow(fname, encoding=None):
 
 @wrap
 def read(fname=None, encoding=None, tokens=None):
+    """
+    Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
+
+    >>> from streamutils import *
+    >>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
+    http://github.com/maxgrenderjones/streamutils
+
+    :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
+    :param encoding: encoding to use to open the file (if None, use platform default)
+    :param tokens: list of filenames
+    """
     if fname or tokens:
         files=wrapInIterable(fname) if fname else tokens
         for name in files:
@@ -599,7 +674,7 @@ def find(pathpattern=None, tokens=None):
 
     >>> from streamutils import *
     >>> find('src/*.py') | replace(os.sep, '/') | write()    #Only searches src directory
-    >>> find('src/**/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
+    >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
     src/streamutils/__init__.py
 
     :param pathpattern: ``glob``-style pattern
@@ -665,7 +740,7 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
     >>> split(1, tokens=[str("What's up?")]) | write() #if n is an int, then a string is returned
     What's
 
-    :param n: int or list of ints determining which word to pick (first word is 1)
+    :param n: int or list of ints determining which word to pick (first word is 1), 0 returns the whole list
     :param sep: string separator to split on - by default ``sep=None`` which splits on whitespace
     :param outsep: if not None, output will be joined using this separator
     :param names: (Optional) a name or list of names of the n extracted words, used to construct a dict to be passed down the pipeline
@@ -741,11 +816,14 @@ def convert(converters, defaults={}, tokens=None):
 @wrap
 def transform(transformation, tokens=None):
     """
+    Applies a transformation function to each element of the stream
 
-    Does something
+    >>> from streamutils import *
+    >>> transform(lambda x: x.upper(), ['aeiou']) | write()
+    AEIOU
 
-    :param transformation: does something
-    :param tokens: takes in something
+    :param transformation: function to apply
+    :param tokens: list/iterable of objects
     """
     for line in tokens:
         yield transformation(line)
@@ -757,6 +835,14 @@ def sfilter(filterfunction=None, tokens=None):
     Take a user-defined function and passes through the tokens for which the function returns something that is True
     in a conditional context. If no function is supplied, passes through the True items. (Equivalent of :py:func:``filter``)
     function
+
+    >>> sfilter(lambda x: x%3==0, tokens=[1,3,4,5,6,9]) | write()
+    3
+    6
+    9
+    >>> sfilter(lambda x: x.endswith('ball'), tokens=['football', 'rugby', 'tennis', 'volleyball']) | write()
+    football
+    volleyball
 
     :param filterfunction: function to use in the filter
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
@@ -771,6 +857,22 @@ def sfilterfalse(filterfunction=None, tokens=None):
 
 @wrap
 def sformat(pattern, tokens=None):
+    """
+    Takes in a list or dict of strings and formats them with the supplied pattern
+
+    >>> from streamutils import *
+    >>> lines = [['Rapunzel', 'tower'], ['Shrek', 'swamp']]
+    >>> sformat('{} lives in a {}', lines) | write()
+    Rapunzel lives in a tower
+    Shrek lives in a swamp
+    >>> lines = [{'name': 'Rapunzel', 'home': 'tower'}, {'name': 'Shrek', 'home': 'swamp'}]
+    >>> sformat('{name} lives in a {home}', lines) | write()
+    Rapunzel lives in a tower
+    Shrek lives in a swamp
+
+    :param pattern: New-style python formatting pattern (see :py:func:`str.format`)
+    :param tokens: list of lists of fomatting arguments or list of mappings
+    """
     for token in tokens:
         if isinstance(token, Sequence):
             yield pattern.format(*token)
