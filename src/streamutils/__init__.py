@@ -13,7 +13,7 @@ from six.moves import filter, filterfalse, zip   # These work - moves is a fake 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
-import re, time, subprocess, os, glob, locale, shlex, sys
+import re, time, subprocess, os, glob, locale, shlex, sys, codecs
 
 from io import open, TextIOWrapper
 from contextlib import closing
@@ -130,7 +130,6 @@ class Terminator(Callable):
     def __getattr__(self, name):
         return getattr(self.func, name)
 
-
 def _eopen(fname, encoding=None):
     '''
     Tries to guess what encoding to use to open a file based on first few lines. Supports xml and python
@@ -141,9 +140,11 @@ def _eopen(fname, encoding=None):
         if PY3 and sys.version_info.minor>2:
             return TextIOWrapper(urlopen(fname), encoding=encoding)
         else:
-            return closing(urlopen(fname))  # This should be unicode, or at least universal new-line wrapped, but there's a bug
-                                            # in python whereby TextIOWrapper doesn't play nice with urlopen that got fixed
-                                            # in python 3.3 @TODO wrap output of urlopen with unicode and newline support
+            # This should be universal new-line wrapped, but there are two bugs
+            # in python whereby TextIOWrapper doesn't play nice with urlopen that were fixed
+            # in python 3.3 @TODO wrap output of urlopen with unicode and newline support
+            reader=codecs.getreader(encoding or locale.getpreferredencoding())
+            return reader(urlopen(fname))
     else:
         if not encoding:
             encoding=head(tokens=open(fname), n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
