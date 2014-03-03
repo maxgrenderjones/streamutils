@@ -336,7 +336,8 @@ def nth(n, default=None, tokens=None):
 @wrapTerminator
 def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     """
-    Sorts the output of the stream (see documentation for py:func:`sorted`)
+    Sorts the output of the stream (see documentation for py:func:`sorted`). Warning: ``cmp`` was removed from ``sorted``
+    in python 3
 
     >>> from streamutils import *
     >>> for line in (find('*.py') | replace(os.sep, '/') | ssorted()):
@@ -347,7 +348,7 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     """
     if tokens:
         if PY3:
-            return sorted(tokens, key, reverse)
+            return sorted(tokens, key=key, reverse=reverse)
         else:
             return sorted(tokens, cmp, key, reverse)
     else:
