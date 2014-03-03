@@ -13,7 +13,7 @@ from six.moves import filter, filterfalse, zip   # These work - moves is a fake 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
-import re, time, subprocess, os, glob, locale, shlex
+import re, time, subprocess, os, glob, locale, shlex, sys
 
 from io import open, TextIOWrapper
 from contextlib import closing
@@ -138,12 +138,12 @@ def _eopen(fname, encoding=None):
     '''
 
     if re.search('^[a-z+]+[:][/]{2}', fname):
-        if PY3:
+        if PY3 and sys.version_info.minor>2:
             return TextIOWrapper(urlopen(fname), encoding=encoding)
         else:
             return closing(urlopen(fname))  # This should be unicode, or at least universal new-line wrapped, but there's a bug
                                             # in python whereby TextIOWrapper doesn't play nice with urlopen that got fixed
-                                            # in python 3 @TODO wrap output of urlopen with unicode and newline support
+                                            # in python 3.3 @TODO wrap output of urlopen with unicode and newline support
     else:
         if not encoding:
             encoding=head(tokens=open(fname), n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
@@ -346,7 +346,10 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
 
     """
     if tokens:
-        return sorted(tokens, cmp, key, reverse)
+        if PY3:
+            return sorted(tokens, key, reverse)
+        else:
+            return sorted(tokens, cmp, key, reverse)
     else:
         return tokens
 
@@ -862,7 +865,7 @@ def sformat(pattern, tokens=None):
 
     >>> from streamutils import *
     >>> lines = [['Rapunzel', 'tower'], ['Shrek', 'swamp']]
-    >>> sformat('{} lives in a {}', lines) | write()
+    >>> sformat('{0} lives in a {1}', lines) | write()
     Rapunzel lives in a tower
     Shrek lives in a swamp
     >>> lines = [{'name': 'Rapunzel', 'home': 'tower'}, {'name': 'Shrek', 'home': 'swamp'}]
