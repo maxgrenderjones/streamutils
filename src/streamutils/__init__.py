@@ -337,7 +337,7 @@ def nth(n, default=None, tokens=None):
 @wrapTerminator
 def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     """
-    Sorts the output of the stream (see documentation for py:func:`sorted`). Warning: ``cmp`` was removed from ``sorted``
+    Sorts the output of the stream (see documentation for :py:func:`sorted`). Warning: ``cmp`` was removed from ``sorted``
     in python 3
 
     >>> from streamutils import *
@@ -870,7 +870,7 @@ def sfilter(filterfunction=None, tokens=None):
     """
 
     Take a user-defined function and passes through the tokens for which the function returns something that is True
-    in a conditional context. If no function is supplied, passes through the True items. (Equivalent of :py:func:``filter``)
+    in a conditional context. If no function is supplied, passes through the True items. (Equivalent of :py:func:`filter`)
     function
 
     >>> sfilter(lambda x: x%3==0, tokens=[1,3,4,5,6,9]) | write()
