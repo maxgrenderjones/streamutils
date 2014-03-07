@@ -401,7 +401,7 @@ def action(func, tokens=None):
 @wrapTerminator
 def sreduce(func, initial=None, tokens=None):
     """
-    Uses a function to :py:func:``reduce`` the output to a single value
+    Uses a function to :py:func:`reduce` the output to a single value
 
     :param func: Function to use in the reduction
     :param initial: An initial value
