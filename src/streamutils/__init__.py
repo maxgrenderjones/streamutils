@@ -9,7 +9,7 @@ Some implementation details from http://www.dabeaz.com/generators/
 from __future__ import unicode_literals, print_function, division
 
 from six import StringIO, string_types, integer_types, MAXSIZE, PY3
-from six.moves import filter, filterfalse, zip   # These work - moves is a fake module
+from six.moves import reduce, filter, filterfalse, zip   # These work - moves is a fake module
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
@@ -390,6 +390,20 @@ def bag(tokens=None):
 def action(func, tokens=None):
     for line in tokens:
         func(line)
+
+@wrapTerminator
+def sreduce(func, initial=None, tokens=None):
+    """
+    Uses a function to :py:func:``reduce`` the output to a single value
+
+    :param func: Function to use in the reduction
+    :param initial: An initial value
+
+    :return: Output of the reduction
+    """
+    return reduce(func, tokens, initial)
+    
+    
 
 @wrapTerminator
 def write(fname=None, encoding=None, tokens=None):
