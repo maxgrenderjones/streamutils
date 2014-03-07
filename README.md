@@ -7,7 +7,7 @@ Have you ever been jealous of friends who know more commandline magic than you? 
 
 Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully streamutils is for you.
 
-In a sentence, streamutils is pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
+In a sentence, streamutils is a pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
 
 Enough already! What does it do? Perhaps it's best explained with an example. Suppose you want to reimplement our bash pipeline outlined above:
 
@@ -60,7 +60,7 @@ Implemented:
 -   `read`, `head`, `tail`, `follow` to: read a file (`cat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if they match
--   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; generate a stream     of groups matched by the regexp (either as a list, or named as an `OrderedDict`); take a `list` or `dict` (e.g. the output of `tokens`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
+-   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 -   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `tokens`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If no function is given, it returns the items that are `True` (or `False`) in a conditional context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
@@ -73,8 +73,9 @@ Not yet implemented:
 ###Terminators
 Implemented:
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
--   `count`, `bag`, `sort`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
+-   `count`, `bag`, `sort`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
+- 	`sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 
 Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first function of the pipeline as its `tokens` argument.
