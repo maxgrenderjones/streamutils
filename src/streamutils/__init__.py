@@ -9,7 +9,7 @@ Some implementation details from http://www.dabeaz.com/generators/
 from __future__ import unicode_literals, print_function, division
 
 from six import StringIO, string_types, integer_types, MAXSIZE, PY3
-from six.moves import filter, filterfalse, zip   # These work - moves is a fake module
+from six.moves import reduce, filter, filterfalse, zip   # These work - moves is a fake module
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
@@ -371,6 +371,13 @@ def count(tokens=None):
     return sum(1 for line in tokens)
 
 @wrapTerminator
+def ssum(tokens=None):
+    """
+    Adds the items that pass through the stream
+    """
+    return sum(tokens)
+
+@wrapTerminator
 def bag(tokens=None):
     """
     Counts the number of occurences of each of the elements of the stream
@@ -390,6 +397,20 @@ def bag(tokens=None):
 def action(func, tokens=None):
     for line in tokens:
         func(line)
+
+@wrapTerminator
+def sreduce(func, initial=None, tokens=None):
+    """
+    Uses a function to :py:func:``reduce`` the output to a single value
+
+    :param func: Function to use in the reduction
+    :param initial: An initial value
+
+    :return: Output of the reduction
+    """
+    return reduce(func, tokens, initial)
+    
+    
 
 @wrapTerminator
 def write(fname=None, encoding=None, tokens=None):
@@ -799,21 +820,32 @@ def convert(converters, defaults={}, tokens=None):
     Alice in Wonderland was filmed in 1951
     Dumbo was filmed in 1941
 
-    :param converters: ``dict`` Function that converts a field from one form to another
-    :param defaults: ``dict`` defaults to use if the converter function returns `ValueError`
-    :param tokens: a ``dict`` of things to be converted
+    :param converters: ``dict`` of functions or ``list`` of functions or function that converts a field from one form to another
+    :param defaults: defaults to use if the converter function returns
+    `ValueError` (should be the same type as converters)
+    :param tokens: a series of ``dict`` or ``list`` of things to be converted
+    or a series of things
     :raise: ValueError if the conversion fails and no default is supplied
     """
     for line in tokens:
-        for field in converters:
+        if isinstance(converters, Sequence) or isinstance(converters, Mapping):
+            for field in converters:
+                try:
+                    if isinstance(line, Sequence):
+                        line[field-1]=converters[field](line[field-1])
+                    elif isinstance(line, Mapping):
+                        line[field]=converters[field](line[field])
+                except ValueError:
+                    if field in defaults:
+                        line[field]=defaults[field]
+                    else:
+                        raise
+        else:
             try:
-                if isinstance(line, Sequence):
-                    line[field-1]=converters[field](line[field-1])
-                else:
-                    line[field]=converters[field](line[field])
+                line=converters(line)
             except ValueError:
-                if field in defaults:
-                    line[field]=defaults[field]
+                if defaults is not None:
+                    line=defaults
                 else:
                     raise
         yield line
