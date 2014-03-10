@@ -143,7 +143,7 @@ def _eopen(fname, encoding=None):
             # This should be universal new-line wrapped, but there are two bugs
             # in python whereby TextIOWrapper doesn't play nice with urlopen that were fixed
             # in python 3.3 @TODO wrap output of urlopen with unicode and newline support
-            reader=codecs.getreader(encoding or locale.getpreferredencoding())
+            reader=codecs.getreader(encoding or locale.getpreferredencoding()) # @TODO guess encoding using headers
             return reader(urlopen(fname))
     else:
         if not encoding:
@@ -200,7 +200,7 @@ def _groupstodict(match, group, names, inject={}):
 def _ntodict(results, n, names, inject={}):
     """
 
-    :param results: an list containing the results of a ``.split`` or ``.findall`` operation
+    :param results: an list containing the results of a e.g. ``.split`` or ``.findall`` operation
     :param group: An integer group to return or a list of groups
     :param names: A dict of groups to dict keys used to form a dict to return
     :param inject: Extra key value pairs to inject into the returned dict
@@ -277,30 +277,50 @@ def wrapInIterable(item):
         return [item]
 
 @wrap
-def run(args, err=False, cwd=None, env=None, tokens=None, ):
+def run(command, err=False, cwd=None, env=None, tokens=None, ):
+    """
+    Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
+    expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
+    :param command: Command to run
+    :param err: Redirect standard error to standard out (default False)
+    :param cwd: Current working directory for command
+    :param env: Environment to pass into command
+    :param tokens: Lines to pass into the command as standard in
+    :return:
+    """
     stdin=None if tokens is None else StringIO("".join(list(tokens)))
-    if isinstance(args, string_types):
-        args=shlex.split(args)
+    if isinstance(command, string_types):
+        command=shlex.split(command)
+    #@Todo: Change so that it uses communicate on a popen object so that the entire output doesn't need to fit in memory
     if not err:
-        output=subprocess.check_output(args, cwd=cwd, stdin=stdin)
+        output=subprocess.check_output(command, cwd=cwd, stdin=stdin, env=env, universal_newlines=True)
     else:
-        output=subprocess.check_output(args, cwd=cwd, stderr=subprocess.STDOUT, stdin=stdin)
+        output=subprocess.check_output(command, cwd=cwd, stderr=subprocess.STDOUT, stdin=stdin, env=env, universal_newlines=True)
     encoding=locale.getdefaultlocale()[1]
     for line in StringIO(output.decode(encoding)):
-        if os.linesep!='\n' and line.endswith(os.linesep):
-            yield line[:-len(os.linesep)]
-        else:
-            yield line
+        yield line
 
 
 @wrapTerminator
 def first(default=None, tokens=None):
+    """
+    Returns the first item in the stream
+    :param default: returned if the stream is empty
+    :param tokens: a list of things
+    :return: The first item in the stream
+    """
     for line in tokens:
         return line
     return default
 
 @wrapTerminator
 def last(default=None, tokens=None,):
+    """
+    Returns the final item in the stream
+    :param default: returned if the stream is empty
+    :param tokens: a list of things
+    :return: The last item in the stream
+    """
     out=default
     for line in tokens:
         out=line
@@ -316,6 +336,48 @@ def aslist(tokens=None):
     :return: a ``list`` containing all the tokens in the pipeline
     """
     return list(tokens)
+
+@wrapTerminator
+def asdict(key=None, names=None, tokens=None):
+    """
+    Creates a dict or dict of dicts from the result of a stream
+
+    >>> from streamutils import *
+    >>> lines=[]
+    >>> lines.append('From: queen@example.com')
+    >>> lines.append('To: mirror@example.com')
+    >>> lines.append('Date: Once upon a time')
+    >>> lines.append('Subject: The most beautiful?')
+    >>> d=search('(\w+):\s*(\w.*)', tokens=lines, group=None) | asdict()
+    >>> d['To']=='mirror@example.com'
+    True
+    >>> passwd=[]
+    >>> passwd.append('root:x:0:0:root:/root:/bin/bash')
+    >>> passwd.append('bin:x:1:1:bin:/bin:/bin/false')
+    >>> passwd.append('daemon:x:2:2:daemon:/sbin:/bin/false')
+    >>> d=split(sep=':', n=(1,6), names=['username', 'home'], tokens=passwd,) | asdict(key='username')
+    >>> d['daemon']['home']=='/sbin'
+    True
+    >>> d=split(sep=':', tokens=passwd) | asdict(key='username', names=['username', 'password', 'uid', 'gid', 'info', 'home', 'shell'])
+    >>> d['root']['shell']=='/bin/bash'
+    True
+
+    :param key: If set, key to use to construct dictionary. If ``None`` (default), input must be a list of two item tuples
+    :param names: If set, list of keys that will be zipped up with the line values to create a dictionary
+    :param tokens: list of key-value tuples or list of lists or dicts
+    :return: :py:class:`OrderedDict`
+    """
+    if not key:
+        return OrderedDict(tokens)
+    else:
+        result=OrderedDict()
+        for line in tokens:
+            if names:
+                line=dict(zip(names,line))
+            result[line[key]]=line
+        return result
+
+
 
 @wrapTerminator
 def nth(n, default=None, tokens=None):
@@ -371,11 +433,13 @@ def count(tokens=None):
     return sum(1 for line in tokens)
 
 @wrapTerminator
-def ssum(tokens=None):
+def ssum(start=0, tokens=None):
     """
-    Adds the items that pass through the stream
+    Adds the items that pass through the stream via call to :py:func:`sum`
+    :param start: Initial value to start the sum, returned if the stream is empty
+    :return: sum of all the values in the stream
     """
-    return sum(tokens)
+    return sum(tokens, start)
 
 @wrapTerminator
 def bag(tokens=None):
@@ -395,6 +459,13 @@ def bag(tokens=None):
 
 @wrapTerminator
 def action(func, tokens=None):
+    """
+    Calls a function for every element that passes through the stream
+
+    :param func: function to call
+    :param tokens: a list of things
+    :return:
+    """
     for line in tokens:
         func(line)
 
@@ -542,6 +613,12 @@ def sslice(start=0, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None
 
 @wrap
 def follow(fname, encoding=None):
+    """
+    Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never ends)
+    :param fname: File to read
+    :param encoding: encoding to use to read the file
+    :return:
+    """
     f = _eopen(fname, encoding)
     f.seek(0, os.SEEK_END)
     while True:
@@ -577,7 +654,8 @@ def read(fname=None, encoding=None, tokens=None):
             yield line
 
 @wrap
-def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, names=None, flags=0, tokens=None):
+def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, names=None, inject={}, flags=0,
+           strict=False, tokens=None):
     """
     Looks for a regexp pattern within each token (by default by search, but alternatively by match)
     and pass through matches, a group or a regexp substitution
@@ -604,6 +682,8 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
     :param fname: Filename (or list of flienames) to search through
     :param encoding: Encoding to use to open the files
     :param names: dict of groups to names - if included, result will be a dict
+    :param inject: Used in conjunction with names, a `dict` of key: values to inject into the results dictionary
+    :param strict: If True, raise a ValueError if every line doesn't match the pattern (default False)
     :param flags: Regexp flags to use
     :param tokens: strings to search through
     """
@@ -611,16 +691,18 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
     if fname is not None:
         tokens=read(fname, encoding)
     for line in tokens:
+        result = matcher.match(line) if match else matcher.search(line)
+        if not result and strict:
+            raise ValueError('%s does not match pattern %s' % (line, pattern))
         if to:
             if match:
-                if matcher.match(line):
+                if result:
                     yield matcher.sub(to, line)
             else:
                 yield matcher.sub(to, line)
         else:
-            result = matcher.match(line) if match else matcher.search(line)
             if result:
-                yield _groupstodict(result, group, names)
+                yield _groupstodict(result, group, names, inject)
 
 @wrap
 def replace(text, replacement, tokens=None):
@@ -778,32 +860,6 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
 
 @wrap
-def tokenize(pattern, groups=None, names=None, match=True, flags=0, inject={}, tokens=None):
-    """
-    Docs for tokenize
-
-    :param pattern:
-    :param groups:
-    :param names:
-    :param match:
-    :param flags:
-    :param inject:
-    :param tokens:
-    :raise TypeError:
-
-    """
-    if isinstance(pattern, string_types):
-        matcher=re.compile(pattern, flags=flags)
-        for line in tokens:
-            result = matcher.match(line) if match else matcher.search(line)
-            if not result:
-                raise ValueError('Pattern %s does not match %s' % (pattern, line))
-            d=_groupstodict(result, groups, names, inject)
-            yield d
-    else:
-        raise TypeError('tokenize only supports matching by strings (not strings of strings) so far')
-
-@wrap
 def convert(converters, defaults={}, tokens=None):
     """
     Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions.
@@ -889,6 +945,11 @@ def sfilter(filterfunction=None, tokens=None):
 
 @wrap
 def sfilterfalse(filterfunction=None, tokens=None):
+    """
+    Passes through items for which the output of the filter function is False in a boolean context
+    :param filterfunction: Function to use for filtering
+    :param tokens: List of things to filter
+    """
     for line in filterfalse(filterfunction, tokens):
         yield line
 
