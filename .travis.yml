@@ -10,6 +10,6 @@ install:
     - "pip install coveralls pytest-cov"
     - "pip install -e .[deps,sh]"
 script: 
-    py.test --doctest-modules src --cov src --cov-report xml
+    py.test --doctest-modules src --cov src --cov-report term-missing
 after_success: 
     coveralls
