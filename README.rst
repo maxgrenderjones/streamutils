@@ -18,7 +18,7 @@ thought of all the for loops you'd need to replicate a simple
 ``grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "``
 in python? Well, hopefully streamutils is for you.
 
-In a sentence, streamutils is pythonic implementation of the pipelines
+In a sentence, streamutils is a pythonic implementation of the pipelines
 offered by unix shells and the coreutils toolset. Streamutils is not (at
 least not primarily) a python wrapper around tools that you call from
 the commandline or a wrapper around ``subprocess``. For that, you want
@@ -37,8 +37,8 @@ above:
     johndoe 1000
 
 Or perhaps you need to start off with output from a real command
-(streamutils wraps `sh <https://pypi.python.org/pypi/sh>`__ and
-`pbs <https://pypi.python.org/pypi/pbs>`__):
+(streamutils wraps
+`sh <https://pypi.python.org/pypi/sh>`__/`pbs <https://pypi.python.org/pypi/pbs>`__):
 
 .. code:: python
 
@@ -110,11 +110,9 @@ Implemented:
 -  ``split``, ``words``, ``tokens``, ``convert`` to: split a line (with
    ``str.split``) and return a subset of the line (``cut``); find all
    non-overlapping matches that correspond to a 'word' pattern and
-   return a subset of them; generate a stream of groups matched by the
-   regexp (either as a list, or named as an ``OrderedDict``); take a
-   ``list`` or ``dict`` (e.g. the output of ``tokens``) and call a user
-   defined function on each element (e.g. to call ``int`` on fields that
-   should be integers)
+   return a subset of them; take a ``list`` or ``dict`` (e.g. the output
+   of ``search``) and call a user defined function on each element (e.g.
+   to call ``int`` on fields that should be integers)
 -  ``sformat`` to: take a ``dict`` or ``list`` of strings (e.g. the
    output of ``tokens``) and format it using the ``str.format`` syntax
    (``format`` is a builtin, so it would be bad manners not to rename
@@ -141,20 +139,159 @@ Implemented:
 
 -  ``first``, ``last``, ``nth`` to: return the first item of the stream;
    the last item of the stream; the nth item of the stream
--  ``count``, ``bag``, ``sort``: to return the number of tokens in the
-   stream (``wc``); a ``collections.Counter`` (i.e. ``dict`` subclass)
-   with unique tokens as keys and a count of their occurences as values;
-   a sorted list of the tokens. (Note that ``sort`` is a terminator as a
-   reminder that that it needs to exhaust the stream before it can start
-   working)
+-  ``count``, ``bag``, ``sort``, ``ssum``: to return the number of
+   tokens in the stream (``wc``); a ``collections.Counter`` (i.e.
+   ``dict`` subclass) with unique tokens as keys and a count of their
+   occurences as values; a sorted list of the tokens; add the tokens.
+   (Note that ``sort`` is a terminator as a reminder that that it needs
+   to exhaust the stream before it can start working)
 -  ``write``: to write the output to a named file, or print it if no
    filename is supplied, or to a writeable thing (e.g an already open
    file) otherwise.
+-  ``sreduce``: to do a pythonic ``reduce`` on the stream
 -  ``action``: for every token, call a user-defined function
 
 Note that if you have a ``Iterable`` object (or one that behaves like an
 iterable), you can pass it into the first function of the pipeline as
 its ``tokens`` argument.
+
+API Philosophy & Conventions
+----------------------------
+
+There are a number of tenets to the API philosophy, which is intended to
+maximise backward and forward compatibility and minimise surprises -
+while the API is in flux, if functions don't fit the tenets (or tenets
+turn out to be flawed - feedback welcome!) then the API or tenets will
+be changed. If you remember these, you should be able to guess (or at
+least remember) what a function will be called, and how to call it.
+These tenets are:
+
+-  Functions should have sensible names (none of this ``cat`` / ``wc``
+   nonsense - apologies to you who are so trained as to think that
+   ``cat`` *is* the sensible name...)
+-  These names should be as close as possible to the name of the related
+   function from the python library. It's ok if the function names clash
+   (e.g. there's a function called ``search`` in ``re`` too), but not if
+   they clash with builtin functions - in that case they get an ``s``
+   prepended (hence ``sfilter``, ``sfilterfalse``, ``sformat``). (For
+   discussion: is this the right idea? Would it be easier if all
+   functions had s prefixes?)
+-  If you need to avoid clashes, ``import streamutils as su`` (which has
+   the double benefit of being nice and terse to keep your pipelines
+   short, and will help make you `all powerful <xkcd.com/149/>`__)
+-  Positional arguments that are central to what a function does come
+   first (e.g. ``n``, the number of lines to return, is the first
+   argument of ``head``) and their order should be stable over time. For
+   brevity, they should be given sensible defaults. If additional
+   keyword arguments are added, they will be added after existing ones.
+   After the positional arguments comes ``fname``, which allows you to
+   avoid using ``read``. To be safe, apart from for ``read``, ``head``,
+   ``tail`` and ``follow``, ``fname`` should therefore be called as a
+   keyword argument as it marks the first argument whose position is not
+   guaranteed to be stable.
+-  ``tokens`` is the last keyword argument of each function
+-  If it's sensible for the argument to a function to be e.g. a string
+   or a list of strings then both will be supported (so if you pass a
+   list of filenames to ``read`` (via ``fname``), it will ``read`` each
+   one in turn).
+-  ``for line in open(file):`` iterates through a set of
+   ``\n``-terminated strings, irrespective of ``os.linesep``, so other
+   functions yielding lines should follow a similar convention (for
+   example ``run`` replaces ``\r\n`` in its output with ``\n``)
+-  This being the 21st century, streamutils opens files in unicode mode
+   (it uses ``io.open`` in text mode). The benefits of slow-processing
+   outweigh the costs. I am not opposed to adding ``readbytes`` if there
+   is demand (which would return ``str`` or ``bytes`` depending on your
+   python version)
+-  ``head(5)`` returns the first 5 items, similarly ``tail(5)`` the last
+   5 items. ``search(pattern, 2)``, ``word(3)`` and ``nth(4)`` return
+   the second group, third 'word' and fourth item (not the third, fourth
+   and fifth items). This therefore allows ``word(0)`` to return all
+   words. Using zero-based indexing in this case feels wrong to me - is
+   that too confusing/suprising? (Note that this matches how the
+   coreutils behave, and besides, python is inconsistent here -
+   ``group(1)`` is the first not second group, as ``group(0)`` is
+   reserved for the whole pattern).
+
+I would be open to creating a ``coreutils`` (or similarly named)
+subpackage, which aims to roughly replicate the names, syntax and flags
+of the ``coreutils`` toolset (i.e. ``grep``, ``cut``, ``wc`` and
+friends), but only if they are implemented as thin wrappers around
+streamutils functions. After all, the functionality they provide is
+tried and tested, even if their names were designed primarily to be
+short to type (rather than logical, memorable or discoverable).
+
+Dependencies and installation
+-----------------------------
+
+``streamutils`` supports python >=2.6 (on 2.6 it needs the
+``OrderedDict`` and ``Counter`` backports), pypy and python >=3 by using
+the `six <https://pythonhosted.org/six/>`__ library (note that >=1.4.1
+is required). Once it's been submitted, if you've already got the
+dependencies installed, you'll be able to install streamutils from
+`pypi <https://pypi.python.org/>`__ by running:
+
+::
+
+    pip install streamutils
+
+If you want pip to install the mandatory dependencies for you, then run:
+
+::
+
+    pip install streamutils[deps]
+
+And if you want to use streamutils with
+`sh <https://pypi.python.org/pypi/sh>`__ or
+`pbs <https://pypi.python.org/pypi/pbs>`__
+(`sh <https://pypi.python.org/pypi/sh>`__ succeeded
+`pbs <https://pypi.python.org/pypi/pbs>`__ which is unmaintained but
+`sh <https://pypi.python.org/pypi/sh>`__ doesn't support Windows) and
+want ``pip`` to install them for you (note that they just provide
+syntactic sugar, not any new functionality):
+
+::
+
+    pip install streamutils[sh]
+
+Note that to use them, you have to use the ``sh`` variable of the
+``streamutils`` package which returns ``wrap``-ed versions of the real
+``sh`` functions.
+
+Alternatively, you can install from the source by running:
+
+::
+
+    python setup.py install
+
+If you don't have
+`pip <http://pip.readthedocs.org/en/latest/installing.html>`__, which is
+now the official way to install python packages (assuming your package
+manager isn't doing it for you) then use your package manager to install
+it, or if you don't have one (hello Windows users), download and run
+https://raw.github.com/pypa/pip/master/contrib/get-pip.py
+
+Status
+------
+
+``streamutils`` is currently (pre)-alpha status. By which I mean:
+
+-  I think it works fine, but the tests are incomplete and therefore not
+   all paths have been tested
+-  The API is unstable, i.e. the names of functions are still in flux,
+   the order of the positional arguments may change, and the order of
+   keyword arguments is almost guaranteed to change
+
+So why release?
+
+-  Because as soon as I managed to get ``streamutils`` working, I
+   couldn't stop thinking of all the places I'd want to use it
+-  Because I value feedback on the API - if you think the names of
+   functions or their arguments would be more easily understood if they
+   were changed then open an issue and let's have the debate
+-  Because it's a great demonstration of the crazy stuff you can do in
+   python by overloading operators
+-  Why not?
 
 How does it work?
 -----------------
@@ -216,137 +353,6 @@ Two options for what you do next:
    ``first()`` is called, and the chain of generators yield their
    values.
 
-API Philosophy & Conventions
-----------------------------
-
-There are a number of tenets to the API philosophy, which is intended to
-maximise backward and forward compatibility and minimise surprises -
-while the API is in flux, if functions don't fit the tenets (or tenets
-turn out to be flawed - feedback welcome!) then the API or tenets will
-be changed. If you remember these, you should be able to guess (or at
-least remember) what a function will be called, and how to call it.
-These tenets are:
-
--  Functions should have sensible names (none of this ``cat`` / ``wc``
-   nonsense - apologies to you who are so trained as to think that
-   ``cat`` *is* the sensible name...)
--  These names should be as close as possible to the name of the related
-   function from the python library. It's ok if the function names clash
-   (e.g. there's a function called ``search`` in ``re`` too), but not if
-   they clash with builtin functions - in that case they get an ``s``
-   prepended (hence ``sfilter``, ``sfilterfalse``, ``sformat``).
--  If you need to avoid clashes, ``import streamutils as su`` (which has
-   the double benefit of being nice and terse to keep your pipelines
-   short, and has the benefit of making you `all
-   powerful <xkcd.com/149/>`__)
--  Positional arguments that are central to what a function does come
-   first (e.g. ``n``, the number of lines to return, is the first
-   argument of ``head``), then ``fname``, which allows you to avoid
-   using ``read`` if you really want. To be safe, apart from for
-   ``read``, ``head``, ``tail`` and ``follow``, ``fname`` should be
-   called as a keyword argument as it marks the first argument whose
-   position is not guaranteed to be stable.
--  ``tokens`` is the last keyword argument of each function
--  If it's sensible for the argument to a function to be e.g. a string
-   or a list of strings then both will be supported (so if you pass a
-   list of filenames to ``read`` (via ``fname``), it will ``read`` each
-   one in turn).
--  ``for line in open(file):`` iterates through a set of
-   ``\n``-terminated strings, irrespective of ``os.linesep``, so other
-   functions yielding lines should follow a similar convention (for
-   example ``run`` replaces ``\r\n`` in its output with ``\n``)
--  ``head(5)`` returns the first 5 items, similarly ``tail(5)`` the last
-   5 items. ``search(pattern, 2)``, ``word(3)`` and ``nth(4)`` return
-   the second group, third 'word' and fourth item (not the third, fourth
-   and fifth items). This therefore allows ``word(0)`` to return all
-   words. Using zero-based indexing in this case feels wrong to me - is
-   that too confusing/suprising? (Note that this matches how the
-   coreutils behave, and besides, python is inconsistent here -
-   ``group(1)`` is the first not second group, as ``group(0)`` is
-   reserved for the whole pattern).
-
-I would be open to creating a ``coreutils`` (or similarly named)
-subpackage, which aims to roughly replicate the names, syntax and flags
-of the ``coreutils`` toolset (i.e. ``grep``, ``cut``, ``wc`` and
-friends), but only if they are implemented as thin wrappers around
-streamutils functions. After all, the functionality they provide is
-tried and tested, even if their names were designed primarily to be
-short to type (rather than logical, memorable or discoverable).
-
-Dependencies and installation
------------------------------
-
-``streamutils`` supports python >=2.7 (it needs ``OrderedDict``), pypy
-and python >=3 by using the `six <https://pythonhosted.org/six/>`__
-library (its only mandatory dependency, though note that >=1.4.1 is
-required). Otherwise, it's implemented in pure python and doesn't
-require any external packages. Once it's been submitted, if you've
-already got the dependencies installed, you'll be able to install
-streamutils from `pypi <https://pypi.python.org/>`__ by running:
-
-::
-
-    pip install streamutils
-
-If you want pip to install the mandatory dependencies (i.e.
-`six <https://pythonhosted.org/six/>`__) for you, then run:
-
-::
-
-    pip install streamutils[deps]
-
-And if you want to use streamutils with
-`sh <https://pypi.python.org/pypi/sh>`__ or
-`pbs <https://pypi.python.org/pypi/pbs>`__
-(`sh <https://pypi.python.org/pypi/sh>`__ succeeded
-`pbs <https://pypi.python.org/pypi/pbs>`__ which is unmaintained but
-`sh <https://pypi.python.org/pypi/sh>`__ doesn't support Windows) and
-want ``pip`` to install them for you (note that they just provide
-syntactic sugar, not any new functionality):
-
-::
-
-    pip install streamutils[sh]
-
-Note that to use them, you have to use the ``sh`` variable of the
-``streamutils`` package which returns ``wrap``-ed versions of the real
-``sh`` functions.
-
-Alternatively, you can install from the source by running:
-
-::
-
-    python setup.py install
-
-If you don't have
-`pip <http://pip.readthedocs.org/en/latest/installing.html>`__, which is
-now the official way to install python packages (assuming your package
-manager isn't doing it for you) then use your package manager to install
-it, or if you don't have one (hello Windows users), download and run
-https://raw.github.com/pypa/pip/master/contrib/get-pip.py
-
-Status
-------
-
-``streamutils`` is currently (pre)-alpha status. By which I mean:
-
--  I think it works fine, but the tests are incomplete and therefore not
-   all paths have been tested
--  The API is unstable, i.e. the names of functions are still in flux,
-   the order of the positional arguments may change, and the order of
-   keyword arguments is almost guaranteed to change
-
-So why release?
-
--  Because as soon as I managed to get ``streamutils`` working, I
-   couldn't stop thinking of all the places I'd want to use it
--  Because I value feedback on the API - if you think the names of
-   functions or their arguments would be more easily understood if they
-   were changed then open an issue and let's have the debate
--  Because it's a great demonstration of the crazy stuff you can do in
-   python by overloading operators
--  Why not?
-
 Contribute
 ----------
 
@@ -368,3 +374,4 @@ License
 The project is licensed under the Eclipse Public License - v 1.0.
 
 .. |Build Status| image:: https://travis-ci.org/maxgrenderjones/streamutils.png
+   :target: https://travis-ci.org/maxgrenderjones/streamutils/
