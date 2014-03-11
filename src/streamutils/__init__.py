@@ -33,6 +33,10 @@ __docformat__ = 'restructuredtext'
 
 class SHWrapper(object):
     def __getattribute__(self, name):
+        if name.startswith('__') and name.endwith('__'):
+            #We don't want to try importing sh/pbs unless we know
+            #that's what the user wants
+            return super(SHWrapper, self).__getattribute__(name)
         try:
             import sh as realsh
         except ImportError:
