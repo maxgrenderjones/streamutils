@@ -21,7 +21,7 @@ from contextlib import closing
 from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
 try:
     from collections import OrderedDict, Counter
-except ImportError:
+except ImportError: # pragma: no cover
     from ordereddict import OrderedDict #To use OrderedDict backport
     from counter import Counter         #To use Counter backport
 from itertools import chain, islice
@@ -214,7 +214,10 @@ def _ntodict(results, n, names, inject={}):
         if n>0 and n>len(results):
             raise ValueError('Not enough items in list %s to pick item %d' % (results, n))
         if names:
-            d= OrderedDict((names[n], results[n-1]))
+            if isinstance(names, Mapping):
+                d= OrderedDict([(names[n], results[n-1]),])
+            else:
+                d=OrderedDict([(names[0], results[n-1]),])
             if inject:
                 d.update(inject)
             return d
@@ -355,16 +358,28 @@ def asdict(key=None, names=None, tokens=None):
     >>> d=search('(\w+):\s*(\w.*)', tokens=lines, group=None) | asdict()
     >>> d['To']=='mirror@example.com'
     True
-    >>> passwd=[]
+    >>> passwd=[] #fake output for read('/etc/passwd')
     >>> passwd.append('root:x:0:0:root:/root:/bin/bash')
     >>> passwd.append('bin:x:1:1:bin:/bin:/bin/false')
     >>> passwd.append('daemon:x:2:2:daemon:/sbin:/bin/false')
+    >>> d=split(sep=':', n=1, names=['username'], tokens=passwd) | aslist()
+    >>> for u in d:
+    ...     print(u['username'])
+    root
+    bin
+    daemon
+    >>> d=split(sep=':', n=1, names={1: 'username'}, tokens=passwd) | aslist()  #equivalent, using a dict for names
+    >>> for u in d:
+    ...     print(u['username'])
+    root
+    bin
+    daemon
     >>> d=split(sep=':', n=(1,6), names=['username', 'home'], tokens=passwd,) | asdict(key='username')
-    >>> d['daemon']['home']=='/sbin'
-    True
+    >>> print(d['daemon']['home'])
+    /sbin
     >>> d=split(sep=':', tokens=passwd) | asdict(key='username', names=['username', 'password', 'uid', 'gid', 'info', 'home', 'shell'])
-    >>> d['root']['shell']=='/bin/bash'
-    True
+    >>> print(d['root']['shell'])
+    /bin/bash
 
     :param key: If set, key to use to construct dictionary. If ``None`` (default), input must be a list of two item tuples
     :param names: If set, list of keys that will be zipped up with the line values to create a dictionary
@@ -387,6 +402,15 @@ def asdict(key=None, names=None, tokens=None):
 def nth(n, default=None, tokens=None):
     """
     Returns the nth item in the stream, or a default if the list has less than n items
+
+    >>> from streamutils import *
+    >>> tokens = ['Flopsy', 'Mopsy', 'Cottontail', 'Peter']
+    >>> rabbit = matches('.opsy', tokens=tokens) | nth(2)
+    >>> print(rabbit)
+    Mopsy
+    >>> rabbit = matches('.opsy', tokens=tokens) | nth(3, default='No such rabbit')
+    >>> print(rabbit)
+    No such rabbit
 
     :param n: The item to return (first is 1)
     :param default: The default to use if the stream has less than n items
@@ -413,13 +437,10 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     setup.py
 
     """
-    if tokens:
-        if PY3:
-            return sorted(tokens, key=key, reverse=reverse)
-        else:
-            return sorted(tokens, cmp, key, reverse)
+    if PY3: # pragma: no cover
+        return sorted(tokens, key=key, reverse=reverse)
     else:
-        return tokens
+        return sorted(tokens, cmp, key, reverse)
 
 @wrapTerminator
 def count(tokens=None):
@@ -547,6 +568,9 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
     The film Finding Nemo stars a Fish called Nemo
     The film Shrek stars a Ogre called Shrek
     The film The Jungle Book stars a Bear called Baloo
+    >>> head(n=[1,3], skip=1, tokens=lines) | split(sep=',', names=['film', 'name', 'animal']) | sformat('The film {film} stars a {animal} called {name}') | write()
+    The film Finding Nemo stars a Fish called Nemo
+    The film The Jungle Book stars a Bear called Baloo
 
     :param n: Number of lines to return (0=all lines) or a list of lines to return
     :param fname: Filename to open
@@ -579,6 +603,14 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
 def tail(n=10, fname=None, encoding=None, tokens=None):
     """
     Returns a list of the last ``n`` items in the stream
+
+    >>> tokens="hi ho hi ho it's off to work we go".split()
+    >>> tail(5, tokens=tokens) | write()    #Note tail() returns a deque not a generator, but it still works as part of a stream
+    off
+    to
+    work
+    we
+    go
 
     :param n: How many items to return e.g. ``n=5`` will return 5 items
     :param fname: A filename from which to read the last ``n`` items (10 by default)
@@ -982,14 +1014,3 @@ def sformat(pattern, tokens=None):
             yield pattern.format(*token.values(), **token)
         else:
             raise TypeError('Format expects a sequence or a mapping - got a %s' % type(token))
-
-if __name__=='__main__':
-    import doctest
-    doctest.testmod()
-    output= read('streamutils/__init__.py') | matches('def') | matches('streamutils.py') | search('(.prin.)', n=0)
-    output= head(10, 'streamutils/__init__.py')
-    output= printList() | matches('a')
-    output=tail(10, 'streamutils/__init__.py')
-    for f in output:
-        print('Result: %s ' % f.strip())
-    print('Done')
