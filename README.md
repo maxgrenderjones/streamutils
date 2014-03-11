@@ -42,8 +42,8 @@ src/streamutils/__init__.py
 Features
 --------
 
--   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your     pipeline, when each of the functions run as a co-routine (so you can use a pipeline on a big file without needing to have enough space to store the whole thing in memory)
--   Extensible - to use your own functions in a pipeline, just decorate them
+-   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your pipeline, when each of the functions runs for just long enough to yield the next token in the stream (so you can use a pipeline on a big file without needing to have enough space to store the whole thing in memory)
+-   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `filter`, whole-line transformations with `transform` or partial transformations with `convert`
 
 Functions
 ---------
@@ -55,22 +55,25 @@ A quick bit of terminology:
 Implemented so far (equivalent `coreutils` function in brackets if the name is different). Note that the following descriptions say 'lines', but there's nothing stopping the functions operating on a stream of tokens that aren't newline terminated strings:
 
 ###Composable Functions
+These are functions designed to start a stream or process a stream. Result is something that can be iterated over
 
 Implemented:
 -   `read`, `head`, `tail`, `follow` to: read a file (`cat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if they match
--   `split`, `words`, `tokens`, `convert` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
--   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `tokens`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
+-   `split`, `words` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them;
+-   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `words`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If no function is given, it returns the items that are `True` (or `False`) in a conditional context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
--   `transform`: to take user-defined function and use it to transform each line
+-   `transform`, `convert` to: take user-defined function and use it to transform each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 
 Not yet implemented:
 -   `separate`, `combine`: to split the tokens in the stream so that the remainder of the stream receives sub-tokens; to combine subtokens back into tokens
 
 
 ###Terminators
+These are functions that end a stream. Result may be a single value or a list (or something else - point is, not a generator).
+
 Implemented:
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
 -   `count`, `bag`, `sort`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
@@ -121,8 +124,8 @@ If you don't have [pip], which is now the official way to install python package
 
 Status
 ------
-`streamutils` is currently (pre)-alpha status. By which I mean:
--   I think it works fine, but the tests are incomplete and therefore not all paths have been tested
+`streamutils` is currently alpha status. By which I mean:
+-   I think it works fine, but the code coverage is not as high as I'd like it to be (is it ever?)
 -   The API is unstable, i.e. the names of functions are still in flux, the order of the positional arguments may change, and the order of keyword arguments is almost guaranteed to change
 
 So why release?
