@@ -163,6 +163,10 @@ Contribute
 - Source Code: http://github.com/maxgrenderjones/streamutils
 - API documentation: http://streamutils.readthedocs.org/
 - Continuous integration: [![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/)
+- Test coverage: [![Coverage
+  Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
+  "Coverage status at
+  Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
 
 Acknowledgements and References
 -------------------------------
