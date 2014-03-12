@@ -678,7 +678,7 @@ def bzread(fname=None, encoding=None, tokens=None):
     """
     Read a file or files from bzip2-ed archives and output the lines within the files.
 
-    >>> find('examples\*.bz2') | bzread() | head(1) | write()
+    >>> find('examples/*.bz2') | bzread() | head(1) | write()
     199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] "GET /history/apollo/ HTTP/1.0" 200 6245
 
     :param fname:  filename or `list` of filenames
@@ -690,7 +690,8 @@ def bzread(fname=None, encoding=None, tokens=None):
     for name in files:
         if PY3: #pragma: nocover
             if sys.version_info.minor>=3:
-                lines=BZ2File(name, 'rt', encoding=encoding)
+                from bz2 import open as bzopen
+                lines=bzopen(name, 'rt', encoding=encoding)
             else:
                 lines=TextIOWrapper(BZ2File(name, 'rb'), encoding=encoding)
         else:
