@@ -12,17 +12,18 @@ In a sentence, streamutils is a pythonic implementation of the pipelines offered
 Enough already! What does it do? Perhaps it's best explained with an example. Suppose you want to reimplement our bash pipeline outlined above:
 
 ```python
+>>> from __future__ import print_function
 >>> from streamutils import *
->>> name_and_userid = read('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
->>> name_and_userid
+>>> name_and_userid = read('examples/passwd') | matches('johndoe') | split([1,3], ':', ' ') | first()
+>>> print(name_and_userid)
 johndoe 1000
 ```
 
 Or perhaps you need to start off with output from a real command (streamutils wraps [sh]/[pbs]):
 ```python
 >>> from streamutils import *
->>> edited=sh.git.status() | matches('modified:') | words(2)
->>> for edit in edited:
+>>> edited=sh.git.status() | matches('modified:') | words(2)    # doctest: +SKIP
+>>> for edit in edited:                                         # doctest: +SKIP
 ...    print(edit)
 ...
 readme.md
@@ -31,8 +32,8 @@ src/streamutils/__init__.py
 (Or alternatively, if you don't want to install [sh]/[pbs])
 ```python
 >>> from streamutils import *
->>> edited=run(['git', 'status']) | matches('modified:') | words(2)
->>> for edit in edited:
+>>> edited=run(['git', 'status']) | matches('modified:') | words(2) # doctest: +SKIP
+>>> for edit in edited:                                             # doctest: +SKIP
 ...    print(edit)
 ...
 README.md
@@ -140,8 +141,9 @@ You don't need to know this to use the library, but you may be curious nonethele
 ```python
 >>> from streamutils import *
 >>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
->>> s | first()                                           #Only now is read actually called
-u'__python_cmd'
+>>> first_function = s | first()                          #Only now is read actually called
+>>> print(first_function)
+_python_cmd
 ```
 So what happened?
 

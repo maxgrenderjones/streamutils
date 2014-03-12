@@ -6,7 +6,7 @@ Implementation of bash style function piping
 Some implementation details from http://www.dabeaz.com/generators/
 """
 
-from __future__ import unicode_literals, print_function, division
+from __future__ import print_function, division#, unicode_literals
 
 from six import StringIO, string_types, integer_types, MAXSIZE, PY3
 from six.moves import reduce, filter, filterfalse, zip   # These work - moves is a fake module
@@ -104,7 +104,7 @@ class ConnectingGenerator(Iterable):
             other.kwargs[other.tokenskw]=self
             return other.func(*other.args, **other.kwargs)
             #@Todo Call close() back down the chain rather than waiting for GC to do it for us
-        else:
+        else:  # pragma: nocover
             raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other))
 
     def __getattr__(self, name):
@@ -112,18 +112,9 @@ class ConnectingGenerator(Iterable):
 
 class Terminator(Callable):
     def __init__(self, func, tokenskw):
-        #print('Create a terminating function by wrapping %s which takes tokens as "%s"' % (func.__name__, tokenskw))
         self.func=func
         self.tokenskw=tokenskw
-        #self.__doc__=func.__doc__ #makes docstrings work
 
-    # @property
-    # def __doc__(self):
-    #     return self.func.__doc__ if self.func else 'Doc for a Terminator'
-    #
-    # @property
-    # def __name__(self):
-    #     return self.func.__name__ if self.func else 'Terminator'
 
     def __call__(self, *args, **kwargs):
         self.args=args
@@ -141,7 +132,7 @@ def _eopen(fname, encoding=None):
     '''
 
     if re.search('^[a-z+]+[:][/]{2}', fname):
-        if PY3 and sys.version_info.minor>2:
+        if PY3 and sys.version_info.minor>2: #pragma: nocover
             return TextIOWrapper(urlopen(fname), encoding=encoding)
         else:
             # This should be universal new-line wrapped, but there are two bugs
@@ -166,7 +157,7 @@ def _gettokens(fname, encoding=None, tokens=None):
             return iter(tokens)
         else:
             return tokens
-    else:
+    else: #pragma: nocover
         raise ValueError('Either fname or tokens must be set')
 
 def _groupstodict(match, group, names, inject={}):
@@ -180,7 +171,10 @@ def _groupstodict(match, group, names, inject={}):
     """
     if isinstance(group, integer_types):
         if names:
-            d= OrderedDict((names[group], match.group(group)))
+            if isinstance(names, Mapping):
+                d=OrderedDict((names[g], match.group(g)) for g in names)
+            else:
+                d=OrderedDict(zip(names, [match.group(group)]))
             if inject:
                 d.update(inject)
             return d
@@ -189,7 +183,7 @@ def _groupstodict(match, group, names, inject={}):
     else:
         if names:
             if isinstance(names, Mapping):
-                d= OrderedDict((names[g], match.group(g)) for g in (group if group else names))
+                d=OrderedDict((names[g], match.group(g)) for g in (group if group else names))
             else:
                 d=OrderedDict(zip(names, [match.group(g) for g in group] if group else match.groups()))
             if inject:
@@ -241,7 +235,7 @@ def _ntodict(results, n, names, inject={}):
                 return results
 
 __test__ = {}
-
+__all__ = ['sh', 'wrap', 'wrapTerminator']
 
 def wrap(func, tokenskw='tokens'):
     '''
@@ -254,6 +248,7 @@ def wrap(func, tokenskw='tokens'):
     #I'm pretty sure newf = update_wrapper(newf, func) ought to work, but it doesn't. I'd love to know why
     cf = update_wrapper(cf, func)
     __test__[func.__name__]=func
+    __all__.append(func.__name__)
     return cf
 
 def wrapTerminator(func, tokenskw='tokens'):
@@ -269,6 +264,7 @@ def wrapTerminator(func, tokenskw='tokens'):
     # t.__name__ = func.__name__
     t = update_wrapper(t, func)
     __test__[func.__name__]=func
+    __all__.append(func.__name__)
     return t
 
 def wrapInIterable(item):
@@ -369,6 +365,18 @@ def asdict(key=None, names=None, tokens=None):
     bin
     daemon
     >>> d=split(sep=':', n=1, names={1: 'username'}, tokens=passwd) | aslist()  #equivalent, using a dict for names
+    >>> for u in d:
+    ...     print(u['username'])
+    root
+    bin
+    daemon
+    >>> d=search('^(\w+)', names=['username'], tokens=passwd) | aslist() #equivalent, using search not split
+    >>> for u in d:
+    ...     print(u['username'])
+    root
+    bin
+    daemon
+    >>> d=search('^(\w+)', names={1:'username'}, tokens=passwd) | aslist() #using search with a dict for names
     >>> for u in d:
     ...     print(u['username'])
     root
@@ -517,17 +525,18 @@ def write(fname=None, encoding=None, tokens=None):
     :param fname: If `str`, filename to write to, otherwise open file-like object to write to. Default of `None` implies
                     write to standard output
     :param encoding: Encoding to use to write to the file
-    :param tokens: Lines to write to teh file
+    :param tokens: Lines to write to the file
     """
-    if not fname:
-        for line in tokens:
-            print(line.rstrip() if isinstance(line, string_types) else line)
-    elif isinstance(fname, string_types):
-        with open(fname, encoding=encoding, mode='wt') as f:
-            f.writelines(tokens)
-    else:
-        for line in tokens:
-            fname.write(line)
+    if tokens:
+        if not fname:
+            for line in tokens:
+                print(line.rstrip() if isinstance(line, string_types) else line)
+        elif isinstance(fname, string_types):
+            with open(fname, encoding=encoding, mode='wt') as f:
+                f.writelines(tokens)
+        else:
+            for line in tokens:
+                fname.write(line)
 
 @wrap
 def unique(tokens=None):
@@ -679,7 +688,7 @@ def bzread(fname=None, encoding=None, tokens=None):
     from bz2 import BZ2File
     files=wrapInIterable(fname) if fname else tokens
     for name in files:
-        if PY3:
+        if PY3: #pragma: nocover
             if sys.version_info.minor>=3:
                 lines=BZ2File(name, 'rt', encoding=encoding)
             else:
@@ -702,7 +711,7 @@ def gzread(fname=None, encoding=None, tokens=None):
     from gzip import open as gzopen
     files=wrapInIterable(fname) if fname else tokens
     for name in files:
-        if PY3 and sys.version_info.minor>=3:
+        if PY3 and sys.version_info.minor>=3: #pragma: nocover
             lines=gzopen(name, 'rt', encoding=encoding)
         else:
             reader=codecs.getreader(encoding or locale.getpreferredencoding())
@@ -731,7 +740,7 @@ def read(fname=None, encoding=None, tokens=None):
                 for line in f:
                     #print 'Cat: %s' % line.strip()
                     yield line
-    else:
+    else:  #pragma: nocover
         import fileinput
         for line in fileinput.input('-'):
             yield line
@@ -804,6 +813,11 @@ def matches(pattern, match=False, flags=0, v=False, tokens=None):
     """
     Filters the input for strings that match the pattern (think UNIX ``grep``)
 
+    >>> months=['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    >>> matches('A', tokens=months) | write()
+    April
+    August
+
     :param pattern: regexp pattern to test against
     :param match: if ``True``, use :py:func:`re.match` else use :py:func:`re.search` (default ``False``)
     :param flags: regexp flags
@@ -824,6 +838,12 @@ def matches(pattern, match=False, flags=0, v=False, tokens=None):
 def nomatch(pattern, match=False, flags=0, tokens=None):
     """
     Filters the input for strings that don't match the pattern (think UNIX ``grep -v``)
+
+    >>> months=['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    >>> nomatch('r|a', flags=re.IGNORECASE, tokens=months) | write()
+    June
+    July
+
 
     :param pattern: regexp pattern to test against
     :param match: if ``True``, use :py:func:`re.match` else use :py:func:`re.search` (default ``False``)
@@ -846,6 +866,10 @@ def fnmatches(pathpattern, matchcase=False, tokens=None):
     streamutils/__init__.py
     >>> fnmatches('*/*.py', False, lines) | write()
     streamutils/__init__.py
+    >>> fnmatches('readme.*', True, lines) | write()
+    >>> fnmatches('README.*', True, lines) | write()
+    README.md
+
 
     :param pathpattern: Pattern to match (caution - ``/`` or ``os.sep`` is not special)
     :param matchcase: Whether to match case-senitive on case-insensitive file systems
@@ -872,10 +896,9 @@ def find(pathpattern=None, tokens=None):
     :param tokens: A list of ``glob``-style patterns to search for
     :return: An iterator across the files found by the function
     """
-    if pathpattern:
-        return glob.iglob(pathpattern)
-    elif tokens is not None:
-        return chain.from_iterables(glob.iglob(token) for token in tokens)
+    paths=wrapInIterable(pathpattern) if pathpattern else tokens
+    if paths:
+        return chain.from_iterable(glob.iglob(path) for path in paths)
     else:
         return glob.iglob('**/*')
 
@@ -1030,6 +1053,11 @@ def sfilter(filterfunction=None, tokens=None):
 def sfilterfalse(filterfunction=None, tokens=None):
     """
     Passes through items for which the output of the filter function is False in a boolean context
+
+    >>> sfilterfalse(lambda x: x.endswith('ball'), tokens=['football', 'rugby', 'tennis', 'volleyball']) | write()
+    rugby
+    tennis
+
     :param filterfunction: Function to use for filtering
     :param tokens: List of things to filter
     """
@@ -1059,5 +1087,5 @@ def sformat(pattern, tokens=None):
             yield pattern.format(*token)
         elif isinstance(token, Mapping):
             yield pattern.format(*token.values(), **token)
-        else:
+        else:  # pragma: nocover
             raise TypeError('Format expects a sequence or a mapping - got a %s' % type(token))

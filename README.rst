@@ -32,8 +32,8 @@ above:
 .. code:: python
 
     >>> from streamutils import *
-    >>> name_and_userid = read('/etc/passwd') | matches(username) | split([1,3], ':', ' ') | first()
-    >>> name_and_userid
+    >>> name_and_userid = read('examples/passwd') | matches('johndoe') | split([1,3], ':', ' ') | first()
+    >>> print(name_and_userid)
     johndoe 1000
 
 Or perhaps you need to start off with output from a real command
@@ -43,8 +43,8 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=sh.git.status() | matches('modified:') | words(2)
-    >>> for edit in edited:
+    >>> edited=sh.git.status() | matches('modified:') | words(2) # doctest: +SKIP
+    >>> for edit in edited:                                      # doctest: +SKIP
     ...    print(edit)
     ...
     readme.md
@@ -56,8 +56,8 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=run(['git', 'status']) | matches('modified:') | words(2)
-    >>> for edit in edited:
+    >>> edited=run(['git', 'status']) | matches('modified:') | words(2) # doctest: +SKIP
+    >>> for edit in edited:                                             # doctest: +SKIP
     ...    print(edit)
     ...
     README.md
@@ -308,8 +308,9 @@ function names within ``ez_setup.py``:
 
     >>> from streamutils import *
     >>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
-    >>> s | first()                                           #Only now is read actually called
-    u'__python_cmd'
+    >>> first_function = s | first()                          #Only now is read actually called
+    >>> print(first_function)
+    _python_cmd
 
 So what happened?
 

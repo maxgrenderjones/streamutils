@@ -40,7 +40,7 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Utilities',
         'Topic :: Text Processing',
-        'Operating System :: OS Independent',
+#       'Operating System :: OS Independent'
     ]
 )
 
