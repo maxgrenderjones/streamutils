@@ -681,7 +681,8 @@ def bzread(fname=None, encoding=None, tokens=None):
     for name in files:
         if PY3:
             if sys.version_info.minor>=3:
-                lines=BZ2File(name, 'rt', encoding=encoding)
+                from bz2 import open as bzopen
+                lines=bzopen(name, 'rt', encoding=encoding)
             else:
                 lines=TextIOWrapper(BZ2File(name, 'rb'), encoding=encoding)
         else:
