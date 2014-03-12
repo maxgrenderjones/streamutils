@@ -29,5 +29,5 @@ setup(
         'sh': deps +
               (['pbs'] if sys.platform=='win32' else ['sh'])
     },
-    tests_require={'pytest>=2.3.4'},
+    tests_require=['pytest>=2.3.4'],
 )
