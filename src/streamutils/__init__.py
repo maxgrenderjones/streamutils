@@ -48,10 +48,58 @@ class SHWrapper(object):
 
 sh=SHWrapper()
 
+class ReadableWrapper(object):
+    """
+    Class needed in order to make TextIOWrapper work on Python <3.3 (it looks for attributes that don't
+    exist on file-like objects)
+    """
+    #def __init__(self, filename, openfilefunc):
+    #    self.openfile=openfilefunc(filename, mode='rb')
+    def __init__(self, openfile):
+        self.openfile=openfile
+    def __getattr__(self, name):
+        if hasattr(self.openfile, name):
+            return getattr(self.openfile, name)
+        elif name in ('readable', ):
+            return lambda: True
+        elif name in ('writable', 'seekable'):
+            return lambda: False
+        elif name in ('flush'):
+            return lambda: 0
+        elif name=='read1':
+            return lambda: self.openfile.read
+        else:
+            raise AttributeError(name)
+
+    #copied from io module of python 2.6
+    def readinto(self, b):
+        """
+        Read up to len(b) bytes into b.
+
+        Like read(), this may issue multiple reads to the underlying raw
+        stream, unless the latter is 'interactive'.
+
+        Returns the number of bytes read (0 for EOF).
+
+        Raises BlockingIOError if the underlying raw stream has no
+        data at the moment.
+        """
+        # XXX This ought to work with anything that supports the buffer API
+        data = self.oenfile.read(len(b))
+        n = len(data)
+        try:
+            b[:n] = data
+        except TypeError as err:
+            import array
+            if not isinstance(b, array.array):
+                raise err
+            b[:n] = array.array(b'b', data)
+        return n
+
+
 class ComposableFunction(Callable):
 
     def __init__(self, func, tokenskw):
-
         """
         Creates a composable function by wrapping func, which expects to receive tokens on its tokenskw
         :param func:
@@ -688,15 +736,16 @@ def bzread(fname=None, encoding=None, tokens=None):
     from bz2 import BZ2File
     files=wrapInIterable(fname) if fname else tokens
     for name in files:
-        if PY3: #pragma: nocover
-            if sys.version_info.minor>=3:
+        if PY3 and sys.version_info.minor>=3:
                 from bz2 import open as bzopen
                 lines=bzopen(name, 'rt', encoding=encoding)
-            else:
-                lines=TextIOWrapper(BZ2File(name, 'rb'), encoding=encoding)
         else:
-            reader=codecs.getreader(encoding or locale.getpreferredencoding())
-            lines=reader(BZ2File(name, 'rb'))
+            from io import BufferedReader
+            lines=TextIOWrapper(BufferedReader(ReadableWrapper(BZ2File(name, mode='rb'))))
+            #lines=TextIOWrapper(ReadableWrapper(name, BZ2File), encoding=encoding)
+        # else:
+        #     reader=codecs.getreader(encoding or locale.getpreferredencoding())
+        #     lines=reader(BZ2File(name, 'rb'))
         with closing(lines) as lines:
             for line in lines:
                 yield line
@@ -726,9 +775,9 @@ def read(fname=None, encoding=None, tokens=None):
     """
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
 
-    >>> from streamutils import *
-    >>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
-    http://github.com/maxgrenderjones/streamutils
+    #>>> from streamutils import *
+    #>>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
+    #http://github.com/maxgrenderjones/streamutils
 
     :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
     :param encoding: encoding to use to open the file (if None, use platform default)
