@@ -16,7 +16,7 @@ from six.moves.urllib.request import urlopen
 import re, time, subprocess, os, glob, locale, shlex, sys, codecs
 
 from io import open, TextIOWrapper
-from contextlib import closing
+from contextlib import closing, contextmanager
 
 from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
 try:
@@ -131,14 +131,7 @@ def _eopen(fname, encoding=None):
     '''
 
     if re.search('^[a-z+]+[:][/]{2}', fname):
-        if PY3 and sys.version_info.minor>2: #pragma: nocover
-            return TextIOWrapper(urlopen(fname), encoding=encoding)
-        else:
-            # This should be universal new-line wrapped, but there are two bugs
-            # in python whereby TextIOWrapper doesn't play nice with urlopen that were fixed
-            # in python 3.3 @TODO wrap output of urlopen with unicode and newline support
-            reader=codecs.getreader(encoding or locale.getpreferredencoding()) # @TODO guess encoding using headers
-            return reader(urlopen(fname))
+        return _getNewlineReadable(urlopen(fname), encoding=encoding)
     else:
         if not encoding:
             encoding=head(tokens=open(fname), n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
@@ -147,6 +140,26 @@ def _eopen(fname, encoding=None):
             return open(fname, encoding=encoding)
         else:
             return open(fname)
+
+def _getNewlineReadable(rawstream, encoding):
+    """
+    TextIOWrapper before python 3.3 makes unreasonable assumptions about what attributes a readable thing has
+    making it pretty much useless. The problem with ``codecs.getreader`` is that it doesn't automatically
+    support universal newlines. Will close the underlying stream when finished
+    :param rawstream:
+    :param encoding:
+    :return:
+    """
+    if PY3 and sys.version_info.minor>=3:  # pragma: nocover
+        with closing(TextIOWrapper(rawstream, encoding=encoding)) as lines:
+            for line in lines:
+                yield line
+    else:
+        reader=codecs.getreader(encoding or locale.getpreferredencoding())
+        with closing(reader(rawstream)) as lines:
+            for line in lines:
+                yield line
+
 
 def _gettokens(fname, encoding=None, tokens=None):
     if fname:
@@ -639,13 +652,13 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
 @wrap
 def sslice(start=0, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None):
     """
-
-    :param start:
-    :param stop:
-    :param step:
-    :param fname:
-    :param encoding:
-    :param tokens:
+    Provides access to a slice of the stream between ``start`` and ``stop`` at intervals of ``step``
+    :param start: First token to return
+    :param stop: Maximum token to return
+    :param step: Interval between tokens
+    :param fname: Filename to use as input
+    :param encoding: Unicode encoding to use to open files
+    :param tokens: list of filenames to open
     """
     try:
         tokens=_gettokens(fname, encoding, tokens)
@@ -689,14 +702,10 @@ def bzread(fname=None, encoding=None, tokens=None):
     for name in files:
         if PY3 and sys.version_info.minor>=3: #pragma: nocover
                 from bz2 import open as bzopen
-                lines=bzopen(name, 'rt', encoding=encoding)
+                with bzopen(name, 'rt', encoding=encoding) as lines:
+                    return iter(lines)
         else:
-            reader=codecs.getreader(encoding or locale.getpreferredencoding())
-            lines=reader(BZ2File(name, 'rb'))
-        with closing(lines) as lines:
-            for line in lines:
-                yield line
-
+            return iter(_getNewlineReadable(BZ2File(name, 'rb'), encoding))
 
 def gzread(fname=None, encoding=None, tokens=None):
     """
@@ -709,13 +718,10 @@ def gzread(fname=None, encoding=None, tokens=None):
     files=wrapInIterable(fname) if fname else tokens
     for name in files:
         if PY3 and sys.version_info.minor>=3: #pragma: nocover
-            lines=gzopen(name, 'rt', encoding=encoding)
+            with gzopen(name, 'rt', encoding=encoding) as lines:
+                return iter(lines)
         else:
-            reader=codecs.getreader(encoding or locale.getpreferredencoding())
-            lines=reader(gzopen(name, 'rb'))
-        with closing(lines) as lines:
-            for line in lines:
-                yield line
+            return iter(_getNewlineReadable(gzopen(name, 'rb')))
 
 @wrap
 def read(fname=None, encoding=None, tokens=None):
