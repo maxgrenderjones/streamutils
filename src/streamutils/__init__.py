@@ -719,9 +719,11 @@ def gzread(fname=None, encoding=None, tokens=None):
     for name in files:
         if PY3 and sys.version_info.minor>=3: #pragma: nocover
             with gzopen(name, 'rt', encoding=encoding) as lines:
-                return iter(lines)
+                for line in lines:
+                    yield line
         else:
-            return iter(_getNewlineReadable(gzopen(name, 'rb')))
+            for line in _getNewlineReadable(gzopen(name, 'rb')):
+                yield line
 
 @wrap
 def read(fname=None, encoding=None, tokens=None):
@@ -741,7 +743,6 @@ def read(fname=None, encoding=None, tokens=None):
         for name in files:
             with _eopen(name, encoding) as f:
                 for line in f:
-                    #print 'Cat: %s' % line.strip()
                     yield line
     else:  #pragma: nocover
         import fileinput
