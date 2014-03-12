@@ -58,7 +58,7 @@ Implemented so far (equivalent `coreutils` function in brackets if the name is d
 These are functions designed to start a stream or process a stream. Result is something that can be iterated over
 
 Implemented:
--   `read`, `head`, `tail`, `follow` to: read a file (`cat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
+-   `read`, `gzread`, `bzread`, `head`, `tail`, `follow` to: read a file (`cat`); read a file from a gzip file (`gzcat`); read a file from a bzip file (`bzcat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if they match
 -   `split`, `words` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them;
@@ -99,10 +99,10 @@ There are a number of tenets to the API philosophy, which is intended to maximis
 
 I would be open to creating a `coreutils` (or similarly named) subpackage, which aims to roughly replicate the names, syntax and flags of the `coreutils` toolset (i.e. `grep`, `cut`, `wc` and friends), but only if they are implemented as thin wrappers around streamutils functions. After all, the functionality they provide is tried and tested, even if their names were designed primarily to be short to type (rather than logical, memorable or discoverable).
 
-Dependencies and installation
+Installation and Dependencies
 -----------------------------
 
-`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). Once it's been submitted, if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
+`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). Once it's been submitted to [pypi], if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
 
     pip install streamutils
 
@@ -125,7 +125,7 @@ If you don't have [pip], which is now the official way to install python package
 Status
 ------
 `streamutils` is currently alpha status. By which I mean:
--   I think it works fine, but the code coverage is not as high as I'd like it to be (is it ever?)
+-   I think it works fine, but the code test coverage is not yet as high as I'd like (is it ever?)
 -   The API is unstable, i.e. the names of functions are still in flux, the order of the positional arguments may change, and the order of keyword arguments is almost guaranteed to change
 
 So why release?
@@ -172,6 +172,8 @@ Acknowledgements and References
 -------------------------------
 A shout-out goes to David Beazley, who has written the most comprehensible (and comprehensive) documentation that I've seen on [how to use generators](http://www.dabeaz.com/generators/)
 
+Apache log file example provided by [Nasa](http://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html)
+
 [perl]: http://perl.org
 [sed]: http://www.gnu.org/software/sed/
 [awk]: http://www.gnu.org/s/gawk/manual/gawk.html
@@ -184,4 +186,4 @@ A shout-out goes to David Beazley, who has written the most comprehensible (and 
 License
 -------
 
-The project is licensed under the Eclipse Public License - v 1.0.
+The project is licensed under the [Eclipse Public License - v 1.0](http://choosealicense.com/licenses/eclipse/)
