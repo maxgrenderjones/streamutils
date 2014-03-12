@@ -665,6 +665,53 @@ def follow(fname, encoding=None):
         yield line
 
 @wrap
+def bzread(fname=None, encoding=None, tokens=None):
+    """
+    Read a file or files from bzip2-ed archives and output the lines within the files.
+
+    >>> find('examples\*.bz2') | bzread() | head(1) | write()
+    199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] "GET /history/apollo/ HTTP/1.0" 200 6245
+
+    :param fname:  filename or `list` of filenames
+    :param encoding: unicode encoding to use to open the file (if None, use platform default)
+    :param tokens: list of filenames
+    """
+    from bz2 import BZ2File
+    files=wrapInIterable(fname) if fname else tokens
+    for name in files:
+        if PY3:
+            if sys.version_info.minor>=3:
+                lines=BZ2File(name, 'rt', encoding=encoding)
+            else:
+                lines=TextIOWrapper(BZ2File(name, 'rb'), encoding=encoding)
+        else:
+            reader=codecs.getreader(encoding or locale.getpreferredencoding())
+            lines=reader(BZ2File(name, 'rb'))
+        with closing(lines) as lines:
+            for line in lines:
+                yield line
+
+
+def gzread(fname=None, encoding=None, tokens=None):
+    """
+    Read a file or files from gzip-ed archives and output the lines within the files.
+    :param fname:  filename or `list` of filenames
+    :param encoding: unicode encoding to use to open the file (if None, use platform default)
+    :param tokens: list of filenames
+    """
+    from gzip import open as gzopen
+    files=wrapInIterable(fname) if fname else tokens
+    for name in files:
+        if PY3 and sys.version_info.minor>=3:
+            lines=gzopen(name, 'rt', encoding=encoding)
+        else:
+            reader=codecs.getreader(encoding or locale.getpreferredencoding())
+            lines=reader(gzopen(name, 'rb'))
+        with closing(lines) as lines:
+            for line in lines:
+                yield line
+
+@wrap
 def read(fname=None, encoding=None, tokens=None):
     """
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
