@@ -703,9 +703,11 @@ def bzread(fname=None, encoding=None, tokens=None):
         if PY3 and sys.version_info.minor>=3: #pragma: nocover
                 from bz2 import open as bzopen
                 with bzopen(name, 'rt', encoding=encoding) as lines:
-                    return iter(lines)
+                    for line in lines:
+                        yield line
         else:
-            return iter(_getNewlineReadable(BZ2File(name, 'rb'), encoding))
+            for line in _getNewlineReadable(BZ2File(name, 'rb'), encoding):
+                yield line
 
 def gzread(fname=None, encoding=None, tokens=None):
     """
@@ -722,7 +724,7 @@ def gzread(fname=None, encoding=None, tokens=None):
                 for line in lines:
                     yield line
         else:
-            for line in _getNewlineReadable(gzopen(name, 'rb')):
+            for line in _getNewlineReadable(gzopen(name, 'rb'), encoding=encoding):
                 yield line
 
 @wrap
