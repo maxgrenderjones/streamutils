@@ -530,9 +530,22 @@ def sreduce(func, initial=None, tokens=None):
 
 @wrapTerminator
 def write(fname=None, encoding=None, tokens=None):
-    """
+    r"""
     Writes the output of the stream to a file, or via ``print`` if no file is supplied. Calls to ``print`` include
     a call to :py:func:`str.rstrip` to remove trailing newlines
+
+    >>> from streamutils import *
+    >>> from six import StringIO
+    >>> lines=['%s\n' % line for line in ['Three', 'Blind', 'Mice']]
+    >>> head(tokens=lines) | write() # By default prints to the console
+    Three
+    Blind
+    Mice
+    >>> buffer = StringIO() # Alternatively write to an open filelike object
+    >>> head(tokens=lines) | write(fname=buffer)
+    >>> writtenlines=buffer.getvalue().splitlines()
+    >>> writtenlines[0]=='Three'
+    True
 
     :param fname: If `str`, filename to write to, otherwise open file-like object to write to. Default of `None` implies
                     write to standard output
@@ -650,11 +663,20 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
             tokens.close()
 
 @wrap
-def sslice(start=0, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None):
+def sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None):
     """
     Provides access to a slice of the stream between ``start`` and ``stop`` at intervals of ``step``
-    :param start: First token to return
-    :param stop: Maximum token to return
+
+    >>> lines="hi ho hi ho it's off to work we go".split()
+    >>> sslice(start=2, stop=10, step=2, tokens=lines) | write() #start and stop are both relative to the first item
+    ho
+    ho
+    off
+    work
+
+
+    :param start: First token to return (first is 1)
+    :param stop: Maximum token to return (default some very large number - effectively read to the end)
     :param step: Interval between tokens
     :param fname: Filename to use as input
     :param encoding: Unicode encoding to use to open files
@@ -662,19 +684,18 @@ def sslice(start=0, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None
     """
     try:
         tokens=_gettokens(fname, encoding, tokens)
-        for line in islice(tokens, start, stop, step):
+        for line in islice(tokens, start-1, stop-1, step):
             yield line
     finally:
         if fname and tokens:
             tokens.close()
 
 @wrap
-def follow(fname, encoding=None):
+def follow(fname, encoding=None): #pragma: nocover - runs forever!
     """
     Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never ends)
     :param fname: File to read
     :param encoding: encoding to use to read the file
-    :return:
     """
     f = _eopen(fname, encoding)
     f.seek(0, os.SEEK_END)
