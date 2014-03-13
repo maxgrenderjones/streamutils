@@ -1,6 +1,9 @@
 Introduction to streamutils
 ===========================
-
+[![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/) [![Coverage
+  Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
+  "Coverage status at
+  Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
 Motivation
 ----------
 Have you ever been jealous of friends who know more commandline magic than you? Perhaps you're a python user who feels guilty that you never learnt [sed], [awk] or [perl], and wonder quite how many keystrokes you could be saving yourself? (On the plus side, you haven't worn the keycaps off your punctuation keys yet). Or maybe you're stuck using (or supporting) windows?
