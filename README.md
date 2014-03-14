@@ -1,10 +1,9 @@
 streamutils - pipelines for python
 ==================================
 Bringing one-liners to python since 2014
-[![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/) [![Coverage
-  Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
-  "Coverage status at
-  Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
+
+[![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/)
+[![Coverage Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master "Coverage status at Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
 
 
 Motivation
