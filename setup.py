@@ -2,7 +2,7 @@
 #coding: utf-8
 # vim: set tabstop=4 shiftwidth=4 expandtab:
 from __future__ import print_function, division
-import sys, os.path
+import sys, os.path, multiprocessing #multiprocessing needed for bug workaround (http://bugs.python.org/issue15881#msg170215)
 
 if os.path.exists('ez_setup.py'):
     from ez_setup import use_setuptools
