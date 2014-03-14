@@ -1,10 +1,11 @@
 Introduction to streamutils
 ===========================
 
-Motivation
-----------
-
-Have you ever been jealous of friends who know more commandline magic
+| |Build Status| |Coverage
+ Status|
+| Motivation
+| ----------
+| Have you ever been jealous of friends who know more commandline magic
 than you? Perhaps you're a python user who feels guilty that you never
 learnt `sed <http://www.gnu.org/software/sed/>`__,
 `awk <http://www.gnu.org/s/gawk/manual/gawk.html>`__ or
@@ -31,6 +32,7 @@ above:
 
 .. code:: python
 
+    >>> from __future__ import print_function
     >>> from streamutils import *
     >>> name_and_userid = read('examples/passwd') | matches('johndoe') | split([1,3], ':', ' ') | first()
     >>> print(name_and_userid)
@@ -43,8 +45,8 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=sh.git.status() | matches('modified:') | words(2) # doctest: +SKIP
-    >>> for edit in edited:                                      # doctest: +SKIP
+    >>> edited=sh.git.status() | matches('modified:') | words(2)    # doctest: +SKIP
+    >>> for edit in edited:                                         # doctest: +SKIP
     ...    print(edit)
     ...
     readme.md
@@ -68,11 +70,14 @@ Features
 
 -  Lazy evaluation and therefore memory efficient - nothing happens
    until you start reading from the output of your pipeline, when each
-   of the functions run as a co-routine (so you can use a pipeline on a
-   big file without needing to have enough space to store the whole
-   thing in memory)
+   of the functions runs for just long enough to yield the next token in
+   the stream (so you can use a pipeline on a big file without needing
+   to have enough space to store the whole thing in memory)
 -  Extensible - to use your own functions in a pipeline, just decorate
-   them
+   them, or use the built in functions that do the groundwork for the
+   most obvious things you might want to do (i.e. custom filtering with
+   ``filter``, whole-line transformations with ``transform`` or partial
+   transformations with ``convert``
 
 Functions
 ---------
@@ -93,12 +98,16 @@ tokens that aren't newline terminated strings:
 Composable Functions
 ~~~~~~~~~~~~~~~~~~~~
 
+These are functions designed to start a stream or process a stream.
+Result is something that can be iterated over
+
 Implemented:
 
--  ``read``, ``head``, ``tail``, ``follow`` to: read a file (``cat``);
-   extract the first few tokens of a stream; the last few tokens of a
-   stream; to read new lines of a file as they are appended to it (waits
-   forever like ``tail -f``)
+-  ``read``, ``gzread``, ``bzread``, ``head``, ``tail``, ``follow`` to:
+   read a file (``cat``); read a file from a gzip file (``gzcat``); read
+   a file from a bzip file (``bzcat``); extract the first few tokens of
+   a stream; the last few tokens of a stream; to read new lines of a
+   file as they are appended to it (waits forever like ``tail -f``)
 -  ``matches``, ``nomatch``, ``search``, ``replace`` to: match tokens
    (``grep``), find lines that don't match (``grep -v``), to look for
    patterns in a string (via ``re.search`` or ``re.match``) and return
@@ -107,14 +116,11 @@ Implemented:
    than a regexp)
 -  ``glob`` (or should it be ``find``?), ``fnmatches`` to: generate
    filenames matching a pattern; screen names to see if they match
--  ``split``, ``words``, ``tokens``, ``convert`` to: split a line (with
-   ``str.split``) and return a subset of the line (``cut``); find all
-   non-overlapping matches that correspond to a 'word' pattern and
-   return a subset of them; take a ``list`` or ``dict`` (e.g. the output
-   of ``search``) and call a user defined function on each element (e.g.
-   to call ``int`` on fields that should be integers)
+-  ``split``, ``words`` to: split a line (with ``str.split``) and return
+   a subset of the line (``cut``); find all non-overlapping matches that
+   correspond to a 'word' pattern and return a subset of them;
 -  ``sformat`` to: take a ``dict`` or ``list`` of strings (e.g. the
-   output of ``tokens``) and format it using the ``str.format`` syntax
+   output of ``words``) and format it using the ``str.format`` syntax
    (``format`` is a builtin, so it would be bad manners not to rename
    this function).
 -  ``sfilter``, ``sfilterfalse`` to: take a user-defined function and
@@ -123,8 +129,10 @@ Implemented:
    conditional context
 -  ``unique`` to: only return lines that haven't been seen already
    (``uniq``)
--  ``transform``: to take user-defined function and use it to transform
-   each line
+-  ``transform``, ``convert`` to: take user-defined function and use it
+   to transform each line; take a ``list`` or ``dict`` (e.g. the output
+   of ``search``) and call a user defined function on each element (e.g.
+   to call ``int`` on fields that should be integers)
 
 Not yet implemented:
 
@@ -134,6 +142,9 @@ Not yet implemented:
 
 Terminators
 ~~~~~~~~~~~
+
+These are functions that end a stream. Result may be a single value or a
+list (or something else - point is, not a generator).
 
 Implemented:
 
@@ -221,13 +232,14 @@ streamutils functions. After all, the functionality they provide is
 tried and tested, even if their names were designed primarily to be
 short to type (rather than logical, memorable or discoverable).
 
-Dependencies and installation
+Installation and Dependencies
 -----------------------------
 
 ``streamutils`` supports python >=2.6 (on 2.6 it needs the
 ``OrderedDict`` and ``Counter`` backports), pypy and python >=3 by using
 the `six <https://pythonhosted.org/six/>`__ library (note that >=1.4.1
-is required). Once it's been submitted, if you've already got the
+is required). Once it's been submitted to
+`pypi <https://pypi.python.org/>`__, if you've already got the
 dependencies installed, you'll be able to install streamutils from
 `pypi <https://pypi.python.org/>`__ by running:
 
@@ -274,10 +286,10 @@ https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 Status
 ------
 
-``streamutils`` is currently (pre)-alpha status. By which I mean:
+``streamutils`` is currently alpha status. By which I mean:
 
--  I think it works fine, but the tests are incomplete and therefore not
-   all paths have been tested
+-  I think it works fine, but the code test coverage is not yet as high
+   as I'd like (is it ever?)
 -  The API is unstable, i.e. the names of functions are still in flux,
    the order of the positional arguments may change, and the order of
    keyword arguments is almost guaranteed to change
@@ -361,6 +373,8 @@ Contribute
 -  Source Code: http://github.com/maxgrenderjones/streamutils
 -  API documentation: http://streamutils.readthedocs.org/
 -  Continuous integration: |Build Status|
+-  Test coverage: |Coverage
+    Status|
 
 Acknowledgements and References
 -------------------------------
@@ -369,10 +383,17 @@ A shout-out goes to David Beazley, who has written the most
 comprehensible (and comprehensive) documentation that I've seen on `how
 to use generators <http://www.dabeaz.com/generators/>`__
 
+Apache log file example provided by
+`Nasa <http://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html>`__
+
 License
 -------
 
-The project is licensed under the Eclipse Public License - v 1.0.
+The project is licensed under the `Eclipse Public License - v
+1.0 <http://choosealicense.com/licenses/eclipse/>`__
 
 .. |Build Status| image:: https://travis-ci.org/maxgrenderjones/streamutils.png
    :target: https://travis-ci.org/maxgrenderjones/streamutils/
+.. |Coverage
+ Status| image:: http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
+   :target: https://coveralls.io/r/maxgrenderjones/streamutils
