@@ -1,16 +1,19 @@
-Introduction to streamutils
-===========================
+streamutils - pipelines for python
+==================================
+Bringing one-liners to python since 2014
 [![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/) [![Coverage
   Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
   "Coverage status at
   Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
+
+
 Motivation
 ----------
 Have you ever been jealous of friends who know more commandline magic than you? Perhaps you're a python user who feels guilty that you never learnt [sed], [awk] or [perl], and wonder quite how many keystrokes you could be saving yourself? (On the plus side, you haven't worn the keycaps off your punctuation keys yet). Or maybe you're stuck using (or supporting) windows?
 
 Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully streamutils is for you.
 
-In a sentence, streamutils is a pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
+Put simply, streamutils is a pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
 
 Enough already! What does it do? Perhaps it's best explained with an example. Suppose you want to reimplement our bash pipeline outlined above:
 
@@ -47,12 +50,13 @@ Features
 --------
 
 -   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your pipeline, when each of the functions runs for just long enough to yield the next token in the stream (so you can use a pipeline on a big file without needing to have enough space to store the whole thing in memory)
--   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `filter`, whole-line transformations with `transform` or partial transformations with `convert`
+-   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `filter`, whole-line transformations with `transform` or partial transformations with `convert`)
+-   Unicode-aware: all functions that read from files or file-like things take an `encoding` parameter
 
 Functions
 ---------
 A quick bit of terminology:
-- **pipeline**: A series of streamutil functions `or`-ed together with pipes (i.e. `|`)
+- **pipeline**: A series of streamutil functions joined together with pipes (i.e. `|`)
 - **tokens**: things being passed through the pipeline
 - **stream**: the underlying data which is being broken into the tokens that are passed through the pipeline
 
@@ -62,9 +66,9 @@ Implemented so far (equivalent `coreutils` function in brackets if the name is d
 These are functions designed to start a stream or process a stream. Result is something that can be iterated over
 
 Implemented:
--   `read`, `gzread`, `bzread`, `head`, `tail`, `follow` to: read a file (`cat`); read a file from a gzip file (`gzcat`); read a file from a bzip file (`bzcat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
+-   `read`, `gzread`, `bzread`, `head`, `tail`, `follow` to: read a file (`cat`); read a file from a gzip file (`zcat`); read a file from a bzip file (`bzcat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
--   `glob` (or should it be `find`?), `fnmatches` to: generate filenames matching a pattern; screen names to see if they match
+-   `find`, `fnmatches` to: look for filenames matching a pattern; screen names to see if they match
 -   `split`, `words` to: split a line (with `str.split`) and return a subset of the line (`cut`); find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them;
 -   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `words`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If no function is given, it returns the items that are `True` (or `False`) in a conditional context

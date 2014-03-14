@@ -7,9 +7,9 @@ python:
     - "pypy"
 install: 
     - "pip install --upgrade setuptools"
-    - "pip install coveralls pytest-cov"
+    - "pip install coveralls"
     - "pip install -e .[deps,sh]"
 script: 
-    py.test --doctest-modules --cov src --cov-report term-missing --doctest-glob=*.rst --ignore setup.py --ignore docs/conf.py
+    python setup.py test
 after_success: 
     coveralls

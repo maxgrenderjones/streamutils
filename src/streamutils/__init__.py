@@ -2,8 +2,12 @@
 # coding: utf-8
 # vim: set tabstop=4 shiftwidth=4 expandtab:
 """
-Implementation of bash style function piping
-Some implementation details from http://www.dabeaz.com/generators/
+Documentation for the streamutils package. A few things to note:
+ * the docstrings shown here are the main means of testing that the library works as promised which is why they're more
+   verbose than you might otherwise expect
+ * the code is designed to run and test unmodified on python 2 & 3. That means that all prints are done via the print
+   function, and strings can't be included in documentation output as they get u prefixes on python 2 but not on python 3
+
 """
 
 from __future__ import print_function, division#, unicode_literals
@@ -481,6 +485,7 @@ def count(tokens=None):
 def ssum(start=0, tokens=None):
     """
     Adds the items that pass through the stream via call to :py:func:`sum`
+
     :param start: Initial value to start the sum, returned if the stream is empty
     :return: sum of all the values in the stream
     """
@@ -693,7 +698,8 @@ def sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None
 @wrap
 def follow(fname, encoding=None): #pragma: nocover - runs forever!
     """
-    Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never ends)
+    Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never returns)
+
     :param fname: File to read
     :param encoding: encoding to use to read the file
     """
@@ -753,9 +759,9 @@ def read(fname=None, encoding=None, tokens=None):
     """
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
 
-    #>>> from streamutils import *
-    #>>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
-    #http://github.com/maxgrenderjones/streamutils
+    >>> from streamutils import *
+    >>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
+    http://github.com/maxgrenderjones/streamutils
 
     :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
     :param encoding: encoding to use to open the file (if None, use platform default)
@@ -764,7 +770,7 @@ def read(fname=None, encoding=None, tokens=None):
     if fname or tokens:
         files=wrapInIterable(fname) if fname else tokens
         for name in files:
-            with _eopen(name, encoding) as f:
+            with closing(_eopen(name, encoding)) as f:
                 for line in f:
                     yield line
     else:  #pragma: nocover
@@ -788,6 +794,8 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
     >>> sw ='Snow White'
     >>> dwarves = 'Dwarf One Dwarf Two Dwarf Three Dwarf Four Dwarf Five Dwarf Six Dwarf Seven'
     >>> search(r'(Dwarf \w+\s*){7}', to='The Seven Dwarves', tokens=[dwarves]) | write()
+    The Seven Dwarves
+    >>> search(r'(Dwarf \w+\s*){7}', to='The Seven Dwarves', match=True, tokens=[dwarves]) | write()
     The Seven Dwarves
     >>> search(r'(Dwarf \w+\s*){7}', to='The Seven Dwarves', match=True, tokens=['%s and %s' % (sw, dwarves)]) | write()
     >>> search(r'(Dwarf \w+\s*){7}', to='The Seven Dwarves', tokens=['%s and %s' % (sw, dwarves)]) | write()
