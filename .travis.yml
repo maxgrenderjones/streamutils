@@ -7,10 +7,10 @@ env:
     - TOXENV=pypy
 
 install:
-    - pip install tox, coveralls
+    - pip install tox coveralls
 
 script:
     - tox
 
-after_success: 
+after_success:
     coveralls
