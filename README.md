@@ -3,11 +3,11 @@ streamutils - pipelines for python
 Bringing one-liners to python since 2014
 
 [![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/)
-[![Coverage Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master "Coverage status at Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
-
+[![Coverage Status](https://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master)](https://coveralls.io/r/maxgrenderjones/streamutils?branch=master)
 
 Motivation
 ----------
+
 Have you ever been jealous of friends who know more commandline magic than you? Perhaps you're a python user who feels guilty that you never learnt [sed], [awk] or [perl], and wonder quite how many keystrokes you could be saving yourself? (On the plus side, you haven't worn the keycaps off your punctuation keys yet). Or maybe you're stuck using (or supporting) windows?
 
 Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully streamutils is for you.
