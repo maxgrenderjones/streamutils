@@ -3,8 +3,7 @@ streamutils - pipelines for python
 
 Bringing one-liners to python since 2014
 
-| |Build Status|
-| |Coverage Status|
+|Build Status| |Coverage Status|
 
 Motivation
 ----------
@@ -379,8 +378,7 @@ Contribute
 -  Source Code: http://github.com/maxgrenderjones/streamutils
 -  API documentation: http://streamutils.readthedocs.org/
 -  Continuous integration: |Build Status|
--  Test coverage: |Coverage
-    Status|
+-  Test coverage: |Coverage Status|
 
 Acknowledgements and References
 -------------------------------
@@ -402,6 +400,3 @@ The project is licensed under the `Eclipse Public License - v
    :target: https://travis-ci.org/maxgrenderjones/streamutils/
 .. |Coverage Status| image:: https://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
    :target: https://coveralls.io/r/maxgrenderjones/streamutils?branch=master
-.. |Coverage
- Status| image:: http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
-   :target: https://coveralls.io/r/maxgrenderjones/streamutils
