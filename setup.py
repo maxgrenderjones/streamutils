@@ -25,7 +25,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
-deps=['six>=1.4.1']
+deps=['six>=1.4.1', 'setuptools']
 if version[0]==2 and version[1] < 7:  # version_info is a tuple in python2.6
     deps.append('ordereddict')
     deps.append('counter')

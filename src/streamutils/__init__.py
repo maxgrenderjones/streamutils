@@ -12,6 +12,11 @@ Documentation for the streamutils package. A few things to note:
 
 from __future__ import print_function, division#, unicode_literals
 
+from pkg_resources import parse_version 
+import six
+if parse_version(six.__version__) < parse_version('1.4.0'): #pragma: nocover
+    raise ImportError('six version >= 1.4.0 required')
+
 from six import StringIO, string_types, integer_types, MAXSIZE, PY3
 from six.moves import reduce, filter, filterfalse, zip   # These work - moves is a fake module
 from six.moves.urllib.parse import urlparse
