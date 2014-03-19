@@ -328,7 +328,7 @@ def _wrapInIterable(item):
     >>> _wrapInIterable([1, 2])
     [1, 2]
     >>> _wrapInIterable(iter([1,2]))
-    <listiterator object at ...>
+    <...iterator object at ...>
     >>> _wrapInIterable(dict.get) # Bit of a perverse example
     [<method 'get' of 'dict' objects>]
 
@@ -352,13 +352,12 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
     expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
 
-    >>> from streamutils import *
-    >>> run('git log --reverse') | search('commit (\w+)', group=1) | head(1) | write()
-    998a4a42727c7511d986893f99fb4d3e3d0b6135
-    >>> print(run('git log') | search('commit (\w+)', group=1) | last())
-    998a4a42727c7511d986893f99fb4d3e3d0b6135
-    >>> sh.git.log('--reverse') | search('commit (\w+)', group=1) | head(1) | write() #Alternative using sh/pbs
-    998a4a42727c7511d986893f99fb4d3e3d0b6135
+    >>> from streamutils import * #Suggestions for better commands to use as examples welcome!
+    >>> rev=run('git log --reverse') | search('commit (\w+)', group=1) | first()
+    >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
+    True
+    >>> rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
+    True
 
     :param command: Command to run
     :param err: Redirect standard error to standard out (default False)
