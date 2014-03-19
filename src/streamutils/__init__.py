@@ -356,8 +356,9 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
     >>> rev=run('git log --reverse') | search('commit (\w+)', group=1) | first()
     >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
     True
-    >>> rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
-    True
+    
+    #>>> rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
+    #True
 
     :param command: Command to run
     :param err: Redirect standard error to standard out (default False)
@@ -376,6 +377,8 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
     else:
         output=subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=stdin, env=env, universal_newlines=True).stdout
 
+    if PY3:
+        return output
     return _getNewlineReadable(output, encoding or locale.getdefaultlocale()[1] or 'utf-8')
 
 @wrapTerminator
