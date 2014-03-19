@@ -372,13 +372,11 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
         command=shlex.split(command)
     #@Todo: Change so that it uses communicate on a popen object so that the entire output doesn't need to fit in memory
     if not err:
-        output=subprocess.check_output(command, cwd=cwd, stdin=stdin, env=env, universal_newlines=True)
+        output=subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stdin=stdin, env=env, universal_newlines=True).stdout
     else:
-        output=subprocess.check_output(command, cwd=cwd, stderr=subprocess.STDOUT, stdin=stdin, env=env, universal_newlines=True)
-    encoding=encoding or locale.getdefaultlocale()[1] or 'utf-8'
-    for line in StringIO(output.decode(encoding)):
-        yield line
+        output=subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=stdin, env=env, universal_newlines=True).stdout
 
+    return _getNewlineReadable(output, encoding or locale.getdefaultlocale()[1] or 'utf-8')
 
 @wrapTerminator
 def first(default=None, tokens=None):
