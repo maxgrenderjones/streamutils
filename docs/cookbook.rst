@@ -1,0 +1,59 @@
+Tutorial and cookbook
+=====================
+
+Parsing an Apache logfile
+-------------------------
+
+Suppose we have an apache log file we want to extract info from. (Note that the logfile used here is pretty old, so won't necessarily be in the same format as any log files you may have on your own servers. Let's have a look at the file to see what the contents look like:
+
+.. doctest::
+    >>> from __future__ import print_function, unicode_literals
+    >>> from streamutils import *
+    >>> import os
+    >>> logfile = find('examples/*log.bz2') | first()
+    >>> print(logfile.replace(os.sep, '/'))
+    examples/NASA_access_log_July95.log.bz2
+    >>> bzread(fname=logfile) | head(5) | write()
+    199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] "GET /history/apollo/ HTTP/1.0" 200 6245
+    unicomp6.unicomp.net - - [01/Jul/1995:00:00:06 -0400] "GET /shuttle/countdown/ HTTP/1.0" 200 3985
+    199.120.110.21 - - [01/Jul/1995:00:00:09 -0400] "GET /shuttle/missions/sts-73/mission-sts-73.html HTTP/1.0" 200 4085
+    burger.letters.com - - [01/Jul/1995:00:00:11 -0400] "GET /shuttle/countdown/liftoff.html HTTP/1.0" 304 0
+    199.120.110.21 - - [01/Jul/1995:00:00:11 -0400] "GET /shuttle/missions/sts-73/sts-73-patch-small.gif HTTP/1.0" 200 4179
+
+So, suppose we want to see who's accessing us most, we can pick out the relevant hostnames with ``search`` and then use ``bag`` to count them
+
+.. doctest::
+    >>> logpattern=r'^([\w.-]+)'
+    >>> clients = bzread(fname=logfile) | search(logpattern) | bag()
+    >>> fan = clients.most_common()[0]
+    >>> print('%s accessed us %d times' % (fan[0], fan[1]))
+    kristina.az.com accessed us 118 times
+
+
+Nesting streams to filter for files based on content
+----------------------------------------------------
+
+Suppose we want to find python source files that don't use ``/usr/bin/env`` to call python. We can't do this in a normal pipeline, as we want the names of the files, not their content. To do this, we need to make a nested pipeline like so:
+
+
+.. doctest::
+    >>> import shutil, tempfile, os.path
+    >>> try:
+    ...     d=tempfile.mkdtemp()
+    ...     #First do some setup
+    ...     with open(os.path.join(d, 'envpython.py'), 'w') as f: #
+    ...         f.write('#!/usr/bin/env python')
+    ...     with open(os.path.join(d, 'python2.7.py'), 'w') as f:
+    ...         f.write('#!/usr/bin/python2.7')
+    ...     #Now look for the files
+    ...     find('%s/*.py' % d) | sfilter(lambda x: read(x) | nomatch('/usr/bin/env') | first()) | transform(os.path.basename) | write()
+    ... finally:
+    ...     shutil.rmtree(d)
+    python2.7.py
+
+
+
+
+
+
+

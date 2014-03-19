@@ -21,6 +21,8 @@ Enough already! What does it do? Perhaps it's best explained with an example. Su
 >>> name_and_userid = read('examples/passwd') | matches('johndoe') | split([1,3], ':', ' ') | first()
 >>> print(name_and_userid)
 johndoe 1000
+>>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped files
+johndoe 1000
 ```
 
 Or perhaps you need to start off with output from a real command (streamutils wraps [sh]/[pbs]):

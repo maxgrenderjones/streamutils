@@ -29,6 +29,7 @@ deps=['six>=1.4.1']
 if version[0]==2 and version[1] < 7:  # version_info is a tuple in python2.6
     deps.append('ordereddict')
     deps.append('counter')
+shdeps=['pbs'] if sys.platform=='win32' else ['sh']
 
 setup(
     name='streamutils',
@@ -42,10 +43,10 @@ setup(
     packages=find_packages('src'),
     extras_require={
         'deps': deps,
-        'sh': deps +
-              (['pbs'] if sys.platform=='win32' else ['sh'])
+        'sh': deps + shdeps
+
     },
-    tests_require=['pytest>=2.3.4', 'pytest-cov'],
+    tests_require=['pytest>=2.3.4', 'pytest-cov']+shdeps,
     cmdclass = {'test': PyTest},
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
     classifiers=[
