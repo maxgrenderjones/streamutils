@@ -329,8 +329,8 @@ def _wrapInIterable(item):
     [1, 2]
     >>> _wrapInIterable(iter([1,2]))
     <...iterator object at ...>
-    >>> _wrapInIterable(filter) # Bit of a perverse example
-    [<built-in function filter>]
+    >>> _wrapInIterable(max) # Bit of a perverse example
+    [<built-in function max>]
 
     :param item:
     :return:
