@@ -46,7 +46,7 @@ setup(
         'sh': deps + shdeps
 
     },
-    tests_require=['pytest>=2.3.4', 'pytest-cov']+shdeps,
+    tests_require=deps+shdeps+['pytest>=2.3.4', 'pytest-cov'],
     cmdclass = {'test': PyTest},
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
     classifiers=[

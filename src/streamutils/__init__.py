@@ -329,8 +329,8 @@ def _wrapInIterable(item):
     [1, 2]
     >>> _wrapInIterable(iter([1,2]))
     <...iterator object at ...>
-    >>> _wrapInIterable(dict.get) # Bit of a perverse example
-    [<method 'get' of 'dict' objects>]
+    >>> _wrapInIterable(filter) # Bit of a perverse example
+    [<built-in function filter>]
 
     :param item:
     :return:
