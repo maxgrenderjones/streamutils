@@ -122,7 +122,7 @@ class ConnectingGenerator(Iterable):
             other.kwargs[other.tokenskw]=self
             if 'end' in other.kwargs and other.kwargs['end']:
                 with closing(self):
-		    return list(other.func(*other.args, **other.kwargs))
+                    return list(other.func(*other.args, **other.kwargs))
             return other
         elif isinstance(other, Terminator):
             other.kwargs[other.tokenskw]=self
