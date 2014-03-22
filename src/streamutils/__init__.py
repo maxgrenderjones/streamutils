@@ -120,7 +120,7 @@ class ConnectingGenerator(Iterable):
         if isinstance(other, ConnectingGenerator):
             #print('Connecting output of %s to the tokens of %s' % (self.func.__name__, other.func.__name__))
             other.kwargs[other.tokenskw]=self
-            if 'end' in other.kwargs and other.kwargs['end']:
+            if 'end' in other.kwargs and other.kwargs.pop('end'):
                 with closing(self):
                     return list(other.func(*other.args, **other.kwargs))
             return other
@@ -924,7 +924,7 @@ def replace(text, replacement, tokens=None):
         yield line.replace(text, replacement)
 
 @wrap
-def matches(pattern, match=False, flags=0, v=False, tokens=None, end=False):
+def matches(pattern, match=False, flags=0, v=False, tokens=None):
     """
     Filters the input for strings that match the pattern (think UNIX ``grep``)
 
