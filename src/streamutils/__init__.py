@@ -121,14 +121,13 @@ class ConnectingGenerator(Iterable):
             #print('Connecting output of %s to the tokens of %s' % (self.func.__name__, other.func.__name__))
             other.kwargs[other.tokenskw]=self
             if 'end' in other.kwargs and other.kwargs['end']:
-                return list(other.func(*other.args, **other.kwargs))
+                with closing(self):
+		    return list(other.func(*other.args, **other.kwargs))
             return other
         elif isinstance(other, Terminator):
             other.kwargs[other.tokenskw]=self
-            try:
+            with closing(self):
                 return other.func(*other.args, **other.kwargs)
-            finally:
-                self.close()
         else:  # pragma: nocover
             raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other))
 
