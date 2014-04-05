@@ -21,8 +21,36 @@ Enough already! What does it do? Perhaps it's best explained with an example. Su
 >>> name_and_userid = read('examples/passwd') | matches('johndoe') | split([1,3], ':', ' ') | first()
 >>> print(name_and_userid)
 johndoe 1000
->>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped files
+>>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped (and bzipped) files
 johndoe 1000
+```
+
+streamutils also mimics the `>` and `>>` operators of bash-like shells, so to write to files you can write something like:
+
+```python
+>>> import tempfile, shutil, os
+>>> try:
+...     #Some setup follows to allow this docstring to be included in automated tests
+...     tempdir=tempfile.mkdtemp() # Create a temporary directory to play with
+...     cwd=os.getcwd()            # Save the current directory so we can change back to it afterwards
+...     os.chdir(tempdir)          # Change to our temporary directory
+...     passwd=os.path.join(cwd, 'examples', 'passwd.gz')
+...     #Right - setup's done
+...     with open('test.txt', mode='w') as tmp:                                    # mode determines append / truncate behaviour
+...         gzread(passwd) | matches('johndoe') | split([1,3], ':', ' ') > tmp     # can write to open things
+...     # >> appends, but because python evaluates rshifts (>>) before bitwise or (|), the preceding stream must be in brackets
+...     (gzread(passwd) | matches('johndoe') | split([1,3], ':', ' ')) >> 'test.txt'
+...     line = read('test.txt') | first()
+...     assert line.strip()=='johndoe 1000'
+...     length = read('test.txt') | count()
+...     assert length==2
+...     gzread(passwd) | matches('johndoe') | split([1,3], ':', ' ') > 'test.txt'  # (> writes to a new file)
+...     length = read('test.txt') | count()
+...     assert length==1
+... finally:
+...     os.chdir(cwd)           # Go back to the original directory
+...     shutil.rmtree(tempdir)  # Delete the temporary one
+...
 ```
 
 Or perhaps you need to start off with output from a real command (streamutils wraps [sh]/[pbs]):

@@ -13,6 +13,7 @@ Contents:
 
     readme
     api
+    cookbook
     testing
 
 
