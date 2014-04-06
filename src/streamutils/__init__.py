@@ -166,8 +166,6 @@ class ConnectingGenerator(Iterable):
         else:  #pragma: nocover
             raise TypeError('Got %s: Can only write to filenames/file descriptors or file-like things with a write or writelines method' % other)
 
-
-
     def __getattr__(self, name):
         return getattr(self.func, name)
 
