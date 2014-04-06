@@ -78,7 +78,7 @@ Problem is, you now need to maintain your method signature documentation in two 
 
     >>> import streamutils as su
     >>> from streamutils import *
-    >>> funcs=read(fname='src/streamutils/__init__.py') | search(r'\s?def ((\w+)[(].*[)]):(?:\s?[#].*)?', group=None, names=['sig', 'name']) | sfilter(lambda x: x['name'] in (set(su.__all__) - {'wrap', 'wrapTerminator'})) | ssorted(key=lambda x: x['name'])
+    >>> funcs=read(fname='src/streamutils/__init__.py') | search(r'\s?def ((\w+)[(].*[)]):(?:\s?[#].*)?', group=None, names=['sig', 'name']) | sfilter(lambda x: x['name'] in (set(su.__all__) - set('wrap', 'wrapTerminator'))) | ssorted(key=lambda x: x['name'])
     >>> with open('docs/api.rst', 'w') as apirst:
     ...     lines=[]
     ...     lines.append('API\n')
