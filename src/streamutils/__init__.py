@@ -2,20 +2,24 @@
 # coding: utf-8
 # vim: set tabstop=4 shiftwidth=4 expandtab:
 """
-Documentation for the streamutils package. A few things to note:
- * the docstrings shown here are the main means of testing that the library works as promised which is why they're more
-   verbose than you might otherwise expect
- * the code is designed to run and test unmodified on python 2 & 3. That means that all prints are done via the print
-   function, and strings (which are mostly unicode) can't be included in documentation output as they get 'u' prefixes
-   on python 2 but not on python 3
- * Although the examples pass in lists as the ``tokens`` argument to functions, in normal use, is unusual to use ``tokens``.
-   Usually the input will come from a call to ``read`` or ``head`` or similar
- * When a Terminator is used to pick out items (as opposed to iterating over the results of the stream) ``.close`` is called
-   automatically on each of the generators in the sequence which, for example, closes filenames immediately rather than
-   when garbage collected. If you wan the same result when iterating over items, either iterate all the way to the end
-   or call ``.close`` on the generator
- * For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
-   normal code paths are fully tested
+A few things to note as you read the documentation and source code for streamutils:
+ *  the docstrings shown here are the main means of testing that the library works as promised which is why they're more
+    verbose than you might otherwise expect
+ *  the code is designed to run and test unmodified on python 2 & 3. That means that all prints are done via the print
+    function, and strings (which are mostly unicode) can't be included in documentation output as they get 'u' prefixes
+    on python 2 but not on python 3
+ *  Although the examples pass in lists as the ``tokens`` argument to functions, in normal use, is unusual to use ``tokens``.
+    Usually the input will come from a call to ``read`` or ``head`` or similar
+ *  When a Terminator is used to pick out items (as opposed to iterating over the results of the stream) ``.close`` is called
+    automatically on each of the generators in the stream. This gives each function a chance to clear up and e.g. close
+    open files immediately rather than when garbage collected. If you want the same result when iterating over a stream,
+    either iterate all the way to the end or call ``.close`` on the stream
+ *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
+    normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
+    which python is in use
+ *  Once wrapped, ComposableFunctions return a generator that can be iterated over (or if called with ``end=True``) return
+    a ``list``. Terminators return things e.g. the first item in the list (see ``first``), or a ``list`` of the items in
+    the stream (see ``aslist``)
 
 """
 
@@ -23,7 +27,7 @@ from __future__ import print_function, division#, unicode_literals
 
 from pkg_resources import parse_version 
 import six
-if parse_version(six.__version__) < parse_version('1.4.0'): #pragma: nocover
+if parse_version(six.__version__) < parse_version('1.4.0'):  #pragma: nocover
     raise ImportError('six version >= 1.4.0 required')
 
 from six import StringIO, string_types, integer_types, MAXSIZE, PY3
@@ -31,10 +35,10 @@ from six.moves import reduce, filter, filterfalse, zip   # These work - moves is
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
-import re, time, subprocess, os, glob, locale, shlex, sys, codecs
+import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect
 
 from io import open, TextIOWrapper
-from contextlib import closing, contextmanager
+from contextlib import closing
 
 from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
 try:
@@ -69,8 +73,7 @@ class SHWrapper(object):
 sh=SHWrapper()
 
 class ComposableFunction(Callable):
-
-    def __init__(self, func, tokenskw):
+    def __init__(self, func, tokenskw='tokens'):
         """
         Creates a composable function by wrapping func, which expects to receive tokens on its tokenskw
         :param func:
@@ -78,11 +81,13 @@ class ComposableFunction(Callable):
         """
         self.func=func
         self.tokenskw=tokenskw
-
+        #spec = inspect.getargspec(func)
+        #print('Creating Composable function for function with spec: %s' % repr(spec))
 
     def __call__(self, *args, **kwargs):
-        #print 'Calling via ConnectingGenerator'
-        return ConnectingGenerator(self.func, self.tokenskw, args, kwargs)
+        #print('Calling %s via ConnectingGenerator with args %s and kwargs %s' % (self.func.__name__, args, kwargs))
+        return ConnectingGenerator(self.func, self.tokenskw, list(args), kwargs)
+
     def __getattr__(self, name):
         f=getattr(self.func, name)
         #Kludge (ish) to allow sh's attribute access to work
@@ -98,6 +103,8 @@ class ConnectingGenerator(Iterable):
         self.tokenskw=tokenskw
         self.args=args
         self.kwargs=kwargs
+        #spec = inspect.getargspec(func)
+        #print('Creating Connecting for function with spec: %s' % repr(spec))
         self.it=None
 
     def __iter__(self):
@@ -110,26 +117,54 @@ class ConnectingGenerator(Iterable):
             it = it.__iter__() #Function returned an iterable duck
         elif str(type(it)) in ("<class 'pbs.RunningCommand'>"): #can't compare directly in case this feature not installed
             it=iter(it.stdout.splitlines()) #stdout is a string, not an open file
-        else:
+        else:  #pragma: nocover
             raise TypeError('Composable Functions must return Iterators or Iterables (got %s)' % type(iter))
         self.it=it
         return self.it
 
     def __or__(self, other):
-        #print 'OR being run for %s with pattern %s' % (self.func.__name__, self.args[0])
+        if not (isinstance(other, ConnectingGenerator) or isinstance(other, Terminator)):
+            raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other)) #pragma: nocover
+
+        other.kwargs[other.tokenskw]=self
         if isinstance(other, ConnectingGenerator):
             #print('Connecting output of %s to the tokens of %s' % (self.func.__name__, other.func.__name__))
-            other.kwargs[other.tokenskw]=self
-            if 'end' in other.kwargs and other.kwargs.pop('end'):
+            if 'end' in other.kwargs and other.kwargs['end']:
+                #print('Caught end')
+                other.kwargs.pop('end')
                 with closing(self):
+                    #print('Creating list from %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
                     return list(other.func(*other.args, **other.kwargs))
+            #print('Calling %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
             return other
         elif isinstance(other, Terminator):
-            other.kwargs[other.tokenskw]=self
             with closing(self):
+                #print('Calling %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
                 return other.func(*other.args, **other.kwargs)
-        else:  # pragma: nocover
-            raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other))
+
+    def __gt__(self, other):
+        if isinstance(other, string_types) or isinstance(other, integer_types):
+            with open(other, mode='w') as w:
+                w.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
+        elif hasattr(other, 'writelines'):
+            other.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
+        elif hasattr(other, 'write'):
+            for line in self:
+                other.write(line)
+        else:  #pragma: nocover
+            raise TypeError('Got %s: Can only write to filenames/file descriptors or file-like things with a write or writelines method' % other)
+
+    def __rshift__(self, other):
+        if isinstance(other, string_types) or isinstance(other, integer_types):
+            with open(other, mode='a') as w:
+                w.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
+        elif hasattr(other, 'writelines'):
+            other.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
+        elif hasattr(other, 'write'):
+            for line in self:
+                other.write(line)
+        else:  #pragma: nocover
+            raise TypeError('Got %s: Can only write to filenames/file descriptors or file-like things with a write or writelines method' % other)
 
     def __getattr__(self, name):
         return getattr(self.func, name)
@@ -144,15 +179,13 @@ class ConnectingGenerator(Iterable):
                 if tokens and hasattr(tokens, 'close'):
                     tokens.close()
 
-
 class Terminator(Callable):
-    def __init__(self, func, tokenskw):
+    def __init__(self, func, tokenskw='tokens'):
         self.func=func
         self.tokenskw=tokenskw
 
-
     def __call__(self, *args, **kwargs):
-        self.args=args
+        self.args=list(args)
         self.kwargs=kwargs
         return self #We don't do anything yet, as tokens won't be set yet - func is called by the
                     #OR inside the ConnectingGenerator, after setting tokens
@@ -212,12 +245,32 @@ def _gettokens(fname, encoding=None, tokens=None):
 def _groupstodict(match, group, names, inject={}):
     """
 
+    >>> m=re.match(r'((\w+)\s+(\w+))', 'John Smith')
+    >>> d=_groupstodict(m, None, names=['Fullname', 'Firstname', 'Surname'])
+    >>> for mapping in d.items():
+    ...     print('%s=>%s' % mapping)
+    ...
+    Fullname=>John Smith
+    Firstname=>John
+    Surname=>Smith
+    >>> d=_groupstodict(m, 0, names=['Fullname', 'Firstname', 'Surname'])
+    >>> for mapping in d.items():
+    ...     print('%s=>%s' % mapping)
+    ...
+    Fullname=>John Smith
+    Firstname=>John
+    Surname=>Smith
+
     :param match: a Match Object
     :param group: An integer group to return or a list of groups
     :param names: A dict of groups to dict keys used to form a dict to return
     :param inject: Extra key value pairs to inject into the returned dict
     :return:
     """
+    #If you've specified multiple names, but haven't specified a group, then you want all groups i.e. group=None,
+    #not the whole match i.e. group=0
+    if names and len(names)>1 and group==0:
+        group=None
     if isinstance(group, integer_types):
         if names:
             if isinstance(names, Mapping):
@@ -286,22 +339,21 @@ def _ntodict(results, n, names, inject={}):
 __test__ = {}
 __all__ = ['sh', 'wrap', 'wrapTerminator']
 
-def wrap(func, tokenskw='tokens'):
+def wrap(func):
     '''
     Decorator function used to create a ComposableFunction
 
     :param func: The function to be wrapped - should either yield items into the pipeline or return an iterable
     :param tokenskw: The keyword argument that func expects to receive tokens on
     '''
-    cf = ComposableFunction(func, tokenskw)
-    #I'm pretty sure newf = update_wrapper(newf, func) ought to work, but it doesn't. I'd love to know why
-    if hasattr(func, '__name__'):
-        cf = update_wrapper(cf, func)
-        __test__[func.__name__]=func
-        __all__.append(func.__name__)
+    cf=ComposableFunction(func)
+    if hasattr(func, '__name__'): #sh isn't really a function
+         cf = update_wrapper(cf, func)
+         __test__[func.__name__]=func
+         __all__.append(func.__name__)
     return cf
 
-def wrapTerminator(func, tokenskw='tokens'):
+def wrapTerminator(func):
     """
     Used as a decorator to create a Terminator function that can end a pipeline
 
@@ -309,10 +361,7 @@ def wrapTerminator(func, tokenskw='tokens'):
     :param tokenskw: The keyword argument that func expects to receive tokens on
     :return: A Terminator function
     """
-    t = Terminator(func, tokenskw)
-    # t.__doc__ = func.__doc__
-    # t.__name__ = func.__name__
-    t = update_wrapper(t, func)
+    t = update_wrapper(Terminator(func), func)
     __test__[func.__name__]=func
     __all__.append(func.__name__)
     return t
@@ -355,9 +404,7 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
     >>> rev=run('git log --reverse') | search('commit (\w+)', group=1) | first()
     >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
     True
-    
-    #>>> rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
-    #True
+    >>> #rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
 
     :param command: Command to run
     :param err: Redirect standard error to standard out (default False)
@@ -365,7 +412,6 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
     :param env: Environment to pass into command
     :param encoding: Encoding to use to parse the output. Defaults to the default locale, or utf-8 if there isn't one
     :param tokens: Lines to pass into the command as standard in
-    :return:
     """
     stdin=None if tokens is None else StringIO("".join(list(tokens)))
     if isinstance(command, string_types):
@@ -384,6 +430,7 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
 def first(default=None, tokens=None):
     """
     Returns the first item in the stream
+
     :param default: returned if the stream is empty
     :param tokens: a list of things
     :return: The first item in the stream
@@ -398,6 +445,7 @@ def first(default=None, tokens=None):
 def last(default=None, tokens=None,):
     """
     Returns the final item in the stream
+
     :param default: returned if the stream is empty
     :param tokens: a list of things
     :return: The last item in the stream
@@ -415,13 +463,13 @@ def aslist(tokens=None):
 
     >>> from streamutils import *
     >>> lines=['Nimmo', 'Fish', 'Seagull', 'Nemo', 'Shark']
-    >>> if matches('Neom', tokens=['No nemo here']): #streamutils functions return generators which are always True
+    >>> if matches('Nemo', tokens=['Nothing but ocean here']): #streamutils functions return generators which are always True
     ...     print('Found Nemo!')
     Found Nemo!
-    >>> if matches('Nemo', tokens=lines) | aslist():
+    >>> if matches('Nemo', tokens=lines) | aslist(): #aslist will pull out the values in the generator
     ...     print('Found Nemo!')
     Found Nemo!
-    >>> if head(n=10, tokens=lines) | matches('Nemo', tokens=lines, end=True): #end only works if is part of a chain
+    >>> if head(n=10, tokens=lines) | matches('Nemo', tokens=lines, end=True): #Note that end only works after a |
     ...     print('Found Nemo!')
     Found Nemo!
 
@@ -588,7 +636,6 @@ def action(func, tokens=None):
 
     :param func: function to call
     :param tokens: a list of things
-    :return:
     """
     for line in tokens:
         func(line)
@@ -807,7 +854,7 @@ def bzread(fname=None, encoding=None, tokens=None):
     from bz2 import BZ2File
     files=_wrapInIterable(fname) if fname else tokens
     for name in files:
-        if PY3 and sys.version_info.minor>=3: #pragma: nocover
+        if PY3 and sys.version_info.minor>=3:  #pragma: nocover
                 from bz2 import open as bzopen
                 with bzopen(name, 'rt', encoding=encoding) as lines:
                     for line in lines:
@@ -819,12 +866,15 @@ def bzread(fname=None, encoding=None, tokens=None):
 def gzread(fname=None, encoding=None, tokens=None):
     """
     Read a file or files from gzip-ed archives and output the lines within the files.
+
     :param fname:  filename or `list` of filenames
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
     """
     from gzip import open as gzopen
     files=_wrapInIterable(fname) if fname else tokens
+    if files is None:  #pragma: nocover
+        raise ValueError('No filename or stream supplied')
     for name in files:
         if PY3 and sys.version_info.minor>=3: #pragma: nocover
             with gzopen(name, 'rt', encoding=encoding) as lines:
@@ -912,16 +962,16 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
                 yield _groupstodict(result, group, names, inject)
 
 @wrap
-def replace(text, replacement, tokens=None):
+def replace(old, new, tokens=None):
     """
-    Replace ``text`` in the tokens with ``replacement`` via ``.replace`` (i.e. :py:func:`str.replace`)
+    Replace ``old`` in each tokens with ``new`` via call to ``.replace`` on each token (e.g. :py:func:`str.replace`)
 
-    :param text: text to replace
-    :param replacement: what to replace it with
-    :param tokens: series of strings
+    :param old: text to replace
+    :param new: what to replace it with
+    :param tokens: typically a series of strings
     """
     for line in tokens:
-        yield line.replace(text, replacement)
+        yield line.replace(old, new)
 
 @wrap
 def matches(pattern, match=False, flags=0, v=False, tokens=None):
@@ -971,8 +1021,8 @@ def nomatch(pattern, match=False, flags=0, tokens=None):
 @wrap
 def fnmatches(pathpattern, matchcase=False, tokens=None):
     """
-    Filter tokens for strings that match the pathpattern using :py:func:`fnmatch.fnmatch` or :py:func:`fnmatch.fnmatchcase`
-    ``os.sep`` (i.e. ``\\`` on windows) will be replaced with ``/`` to allow ``/`` to be used in the pattern
+    Filter tokens for strings that match the pathpattern using :py:func:`fnmatch.fnmatch` or :py:func:`fnmatch.fnmatchcase`.
+    Note that ``os.sep`` (i.e. ``\\`` on windows) will be replaced with ``/`` to allow ``/`` to be used in the pattern
 
     >>> from streamutils import *
     >>> lines = ['setup.py', 'README.md', 'streamutils/__init__.py']
@@ -1007,9 +1057,9 @@ def find(pathpattern=None, tokens=None):
     >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
     src/streamutils/__init__.py
 
-    :param pathpattern: ``glob``-style pattern
+    :param pathpattern: :py:func:`glob.glob`-style pattern
     :param tokens: A list of ``glob``-style patterns to search for
-    :return: An iterator across the files found by the function
+    :return: An iterator across the filenames found by the function
     """
     paths=_wrapInIterable(pathpattern) if pathpattern else tokens
     if paths:
@@ -1018,8 +1068,8 @@ def find(pathpattern=None, tokens=None):
         return glob.iglob('**/*')
 
 @wrap
-def words(n=0, word='\S+', outsep=None, names=None, inject=None, flags=0, tokens=None):
-    """
+def words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None):
+    r"""
     Words looks for non-overlapping strings that match the word pattern. It passes on the words it finds down
     the stream. If outsep is None, it will pass on a list, otherwise it will join together the selected words with
     outsep
@@ -1046,13 +1096,13 @@ def words(n=0, word='\S+', outsep=None, names=None, inject=None, flags=0, tokens
 
     :param n: an integer indicating which word to return (first word is 1), a list of integers to select multiple words, or 0 to return all words. If
         n is an integer, the result is a string, if n is a list, the result is a list of strings
-    :param word: a pattern that will be used to select words using :py:func:`re.findall`
+    :param word: a pattern that will be used to select words using :py:func:`re.findall` - (default \S+)
     :param outsep: a string separator to join together the words that are found into a new string (or None to output a list of words)
     :param names: (Optional) a name or list of names of the n extracted words, used to construct a dict to be passed down the pipeline
     :param inject: For use with ``names`` - extra key/value pairs to include in the output dict
     :param flags: flags to pass to the re engine to compile the pattern
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
-    :raise ValueError: if there are less than n (or max(n)) words in the string
+    :raise: ``ValueError`` if there are less than n (or max(n)) words in the string
     """
     matcher=re.compile(word) if not flags else re.compile(word, flags=flags)
     for line in tokens:
@@ -1076,6 +1126,8 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
     :param inject: For use with ``names`` - extra key/value pairs to include in the output dict
     :param tokens: strings to split
     """
+    if tokens is None:
+        raise ValueError('No stream supplied')
     for line in tokens:
         result=line.split(sep)
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
@@ -1104,11 +1156,9 @@ def convert(converters, defaults={}, tokens=None):
     42
 
     :param converters: ``dict`` of functions or ``list`` of functions or function that converts a field from one form to another
-    :param defaults: defaults to use if the converter function returns
-    `ValueError` (should be the same type as converters)
-    :param tokens: a series of ``dict`` or ``list`` of things to be converted
-    or a series of things
-    :raise: ValueError if the conversion fails and no default is supplied
+    :param defaults: defaults to use if the converter function raises a ``ValueError`` (should be the same type as converters)
+    :param tokens: a series of ``dict`` or ``list`` of things to be converted or a series of things
+    :raise: ``ValueError`` if the conversion fails and no default is supplied
     """
     for line in tokens:
         if isinstance(converters, Sequence) or isinstance(converters, Mapping):

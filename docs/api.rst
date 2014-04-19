@@ -1,8 +1,7 @@
 API
 ---
-
 .. automodule:: streamutils
-    :members:
+    :members: 
     .. automethod:: action(func, tokens=None)
     .. automethod:: asdict(key=None, names=None, tokens=None)
     .. automethod:: aslist(tokens=None)
@@ -35,5 +34,5 @@ API
     .. automethod:: tail(n=10, fname=None, encoding=None, tokens=None)
     .. automethod:: transform(transformation, tokens=None)
     .. automethod:: unique(tokens=None)
-    .. automethod:: words(n=0, word='\S+', outsep=None, names=None, inject=None, flags=0, tokens=None)
+    .. automethod:: words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None)
     .. automethod:: write(fname=None, encoding=None, tokens=None)
