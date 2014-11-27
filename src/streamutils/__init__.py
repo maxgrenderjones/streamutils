@@ -589,6 +589,28 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
         return sorted(tokens, cmp, key, reverse)
 
 @wrapTerminator
+def smax(key=None, tokens=None):
+    """
+    Returns the largest item in the stream
+
+    :param key: See documentation for :py:func:`max`
+    :param tokens: a list of things
+    :return: The largest item in the stream (as defined by python :py:func:`max`)
+    """
+    return max(tokens, key=key) if key else max(tokens)
+
+@wrapTerminator
+def smin(key=None, tokens=None):
+    """
+    Returns the smallest item in the stream
+
+    :param key: See documentation for :py:func:`min`
+    :param tokens: a list of things
+    :return: The largest item in the stream (as defined by python :py:func:`min`)
+    """
+    return min(tokens, key=key) if key else min(tokens)
+
+@wrapTerminator
 def count(tokens=None):
     """
     Counts the number of items that pass through the stream (cf ``wc -l``)
@@ -651,8 +673,6 @@ def sreduce(func, initial=None, tokens=None):
     :return: Output of the reduction
     """
     return reduce(func, tokens, initial)
-    
-    
 
 @wrapTerminator
 def write(fname=None, encoding=None, tokens=None):
@@ -708,7 +728,6 @@ def unique(tokens=None):
         if line not in s:
             s.add(line)
             yield line
-
 
 @wrap
 def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
@@ -862,6 +881,7 @@ def bzread(fname=None, encoding=None, tokens=None):
         else:
             for line in _getNewlineReadable(BZ2File(name, 'rb'), encoding):
                 yield line
+
 @wrap
 def gzread(fname=None, encoding=None, tokens=None):
     """
@@ -1131,6 +1151,15 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
     for line in tokens:
         result=line.split(sep)
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
+@wrap
+def join(sep=None, tokens=None):
+    """
+    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.split`)
+    """
+    if tokens is None:
+        raise ValueError('No stream supplied')
+    for line in tokens:
+        yield sep.join(line)
 
 @wrap
 def convert(converters, defaults={}, tokens=None):

@@ -153,9 +153,11 @@ Implemented:
    than a regexp)
 -  ``find``, ``fnmatches`` to: look for filenames matching a pattern;
    screen names to see if they match
--  ``split``, ``words`` to: split a line (with ``str.split``) and return
-   a subset of the line (``cut``); find all non-overlapping matches that
-   correspond to a 'word' pattern and return a subset of them;
+-  ``split``, ``join``, ``words`` to: split a line (with ``str.split``)
+   and return a subset of the line (``cut``); join a line back together
+   with a separator (with ``str.join``), find all non-overlapping
+   matches that correspond to a 'word' pattern and return a subset of
+   them
 -  ``sformat`` to: take a ``dict`` or ``list`` of strings (e.g. the
    output of ``words``) and format it using the ``str.format`` syntax
    (``format`` is a builtin, so it would be bad manners not to rename
@@ -198,6 +200,8 @@ Implemented:
    file) otherwise.
 -  ``sreduce``: to do a pythonic ``reduce`` on the stream
 -  ``action``: for every token, call a user-defined function
+-  ``smax``, ``smin`` to: return the maximum or minimum element in the
+   stream
 
 Note that if you have a ``Iterable`` object (or one that behaves like an
 iterable), you can pass it into the first function of the pipeline as
