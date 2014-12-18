@@ -6,7 +6,8 @@ Parsing an Apache logfile
 
 Suppose we have an apache log file we want to extract info from. (Note that the logfile used here is pretty old, so won't necessarily be in the same format as any log files you may have on your own servers. Let's have a look at the file to see what the contents look like:
 
-..doctest::
+.. doctest::
+
     >>> from __future__ import print_function, unicode_literals
     >>> from streamutils import *
     >>> import os
@@ -22,8 +23,9 @@ Suppose we have an apache log file we want to extract info from. (Note that the 
 
 So, suppose we want to see who's accessing us most, we can pick out the relevant hostnames with ``search`` and then use ``bag`` to count them
 
-..doctest::
-    >>> logpattern=r'^([\w.-]+)'
+.. doctest::
+
+    >>> logpattern=r'''^([\w.-]+)'''
     >>> clients = bzread(fname=logfile) | search(logpattern) | bag()
     >>> fan = clients.most_common()[0]
     >>> print('%s accessed us %d times' % (fan[0], fan[1]))
@@ -33,9 +35,10 @@ So, suppose we want to see who's accessing us most, we can pick out the relevant
 Nesting streams to filter for files based on content
 ----------------------------------------------------
 
-Suppose we want to find python source files that don't use ``/usr/bin/env`` to call python. We can't do this in a normal pipeline, as we want the names of the files, not their content. To do this, we need to make a nested pipeline like so::
+Suppose we want to find python source files that don't use ``/usr/bin/env`` to call python. We can't do this in a normal pipeline, as we want the names of the files, not their content. To do this, we need to make a nested pipeline like so:
 
-..doctest::
+.. doctest::
+
     >>> import shutil, tempfile, os.path
     >>> try:
     ...     d=tempfile.mkdtemp()
@@ -69,9 +72,10 @@ In order to generate the documentation for a ``Noodle`` class and supply the cor
 Solution: Autogenerating output from a source file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Problem is, you now need to maintain your method signature documentation in two places. One potential solution (that streamutils itself uses) is to autogenerate this output like so::
+Problem is, you now need to maintain your method signature documentation in two places. One potential solution (that streamutils itself uses) is to autogenerate this output like so:
 
-..doctest::
+.. doctest::
+
     >>> import streamutils as su
     >>> from streamutils import *
     >>> funcs=read(fname='src/streamutils/__init__.py') | search(r'\s?def ((\w+)[(].*[)]):(?:\s?[#].*)?', group=None, names=['sig', 'name']) | sfilter(lambda x: x['name'] in (set(su.__all__) - set(['wrap', 'wrapTerminator']))) | ssorted(key=lambda x: x['name'])
