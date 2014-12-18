@@ -582,6 +582,7 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     ez_setup.py
     setup.py
 
+    :return: a sorted list
     """
     if PY3: # pragma: no cover
         return sorted(tokens, key=key, reverse=reverse)
@@ -679,7 +680,6 @@ def sreduce(func, initial=None, tokens=None):
 
     :param func: Function to use in the reduction
     :param initial: An initial value
-
     :return: Output of the reduction
     """
     return reduce(func, tokens, initial)

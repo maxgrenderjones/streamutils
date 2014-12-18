@@ -79,7 +79,7 @@ Problem is, you now need to maintain your method signature documentation in two 
     >>> import streamutils as su
     >>> from streamutils import *
     >>> funcs=read(fname='src/streamutils/__init__.py') | search(r'\s?def ((\w+)[(].*[)]):(?:\s?[#].*)?', group=None, names=['sig', 'name']) | sfilter(lambda x: x['name'] in (set(su.__all__) - set(['wrap', 'wrapTerminator']))) | ssorted(key=lambda x: x['name'])
-    >>> with open('docs/api.rst', 'w') as apirst:
+    >>> with open('docs/api-auto.rst', 'w') as apirst:
     ...     lines=[]
     ...     lines.append('API\n')
     ...     lines.append('---\n')
@@ -88,7 +88,7 @@ Problem is, you now need to maintain your method signature documentation in two 
     ...     lines.extend(['    .. automethod:: %s\n' % f['sig'] for f in funcs])
     ...     apirst.writelines(lines)
     ...
-    >>> head(7, fname='docs/api.rst') | write()
+    >>> head(7, fname='docs/api-auto.rst') | write()
     API
     ---
     .. automodule:: streamutils
