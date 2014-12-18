@@ -593,6 +593,11 @@ def smax(key=None, tokens=None):
     """
     Returns the largest item in the stream
 
+    >>> from streamutils import *
+    >>> dates = ['2014-01-01', '2014-02-01', '2014-03-01']
+    >>> head(tokens=dates) | smax()
+    '2014-03-01'
+
     :param key: See documentation for :py:func:`max`
     :param tokens: a list of things
     :return: The largest item in the stream (as defined by python :py:func:`max`)
@@ -603,6 +608,11 @@ def smax(key=None, tokens=None):
 def smin(key=None, tokens=None):
     """
     Returns the smallest item in the stream
+
+    >>> from streamutils import *
+    >>> dates = ['2014-01-01', '2014-02-01', '2014-03-01']
+    >>> head(tokens=dates) | smin()
+    '2014-01-01'
 
     :param key: See documentation for :py:func:`min`
     :param tokens: a list of things
@@ -1146,18 +1156,19 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
     :param inject: For use with ``names`` - extra key/value pairs to include in the output dict
     :param tokens: strings to split
     """
-    if tokens is None:
-        raise ValueError('No stream supplied')
     for line in tokens:
         result=line.split(sep)
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
 @wrap
 def join(sep=None, tokens=None):
     """
-    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.split`)
+    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`)
+
+    >>> split(sep=',', n=[1,4], tokens=['flopsy,mopsy,cottontail,peter']) | join(',') | write()
+    flopsy,peter
+
+    :param sep: string separator to use to join each line in the stream
     """
-    if tokens is None:
-        raise ValueError('No stream supplied')
     for line in tokens:
         yield sep.join(line)
 
