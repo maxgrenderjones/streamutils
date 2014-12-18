@@ -44,7 +44,6 @@ setup(
     extras_require={
         'deps': deps,
         'sh': deps + shdeps
-
     },
     tests_require=deps+shdeps+['pytest>=2.3.4', 'pytest-cov'],
     cmdclass = {'test': PyTest},
