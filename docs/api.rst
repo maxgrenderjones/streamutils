@@ -1,4 +1,5 @@
 API
 ---
 .. automodule:: streamutils
-    :members: 
+    :members:
+    :undoc-members:
