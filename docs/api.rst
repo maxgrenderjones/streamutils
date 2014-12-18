@@ -165,7 +165,8 @@ A few things to note as you read the documentation and source code for streamuti
 
     Searches for files the match a given pattern. For example
 
-    >>> from streamutils import *
+    >>> import os
+    >>> from streamutils import find, replace, write
     >>> find('src/*.py') | replace(os.sep, '/') | write()    #Only searches src directory
     >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
     src/streamutils/__init__.py
@@ -281,6 +282,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     Filters the input for strings that don't match the pattern (think UNIX ``grep -v``)
 
+    >>> import re
     >>> months=['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     >>> nomatch('r|a', flags=re.IGNORECASE, tokens=months) | write()
     June

@@ -69,32 +69,27 @@ In order to generate the documentation for a ``Noodle`` class and supply the cor
     .. autoclass:: Noodle(type)
        .. automethod:: eat(persona)
 
-Solution: Autogenerating output from a source file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Unfortunately, this method doesn't work if you use readthedocs as your documentation host, as they don't support the autodoc module (at least not if you're not on their whitelist).
 
-Problem is, you now need to maintain your method signature documentation in two places. One potential solution (that streamutils itself uses) is to autogenerate this output like so:
+Solution: Autogenerating documentation output from a source file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Ideally, you want one place to maintain your method signatures and documentation (your source code). One potential solution (that streamutils itself uses) is to autogenerate this output like so:
 
 .. doctest::
 
     >>> import streamutils as su
     >>> from streamutils import *
     >>> funcs=read(fname='src/streamutils/__init__.py') | search(r'\s?def ((\w+)[(].*[)]):(?:\s?[#].*)?', group=None, names=['sig', 'name']) | sfilter(lambda x: x['name'] in (set(su.__all__) - set(['wrap', 'wrapTerminator']))) | ssorted(key=lambda x: x['name'])
-    >>> with open('docs/api-auto.rst', 'w') as apirst:
+    >>> with open('docs/api.rst', 'w') as apirst:
     ...     lines=[]
-    ...     lines.append('API\n')
-    ...     lines.append('---\n')
-    ...     lines.append('.. automodule:: streamutils\n')
-    ...     lines.append('    :members: \n')
-    ...     lines.extend(['    .. automethod:: %s\n' % f['sig'] for f in funcs])
-    ...     apirst.writelines(lines)
-    ...
-    >>> head(7, fname='docs/api-auto.rst') | write()
-    API
-    ---
-    .. automodule:: streamutils
-        :members:
-        .. automethod:: action(func, tokens=None)
-        .. automethod:: asdict(key=None, names=None, tokens=None)
-        .. automethod:: aslist(tokens=None)
+    ...     lines.append('API')
+    ...     lines.append('---')
+    ...     lines.append('.. module:: streamutils')
+    ...     lines.append(su.__doc__.strip())
+    ...     for f in funcs:
+    ...         lines.append('.. method:: %s' % f['sig'])
+    ...         lines.append(locals()[f['name']].__doc__)
+    ...     apirst.writelines('\n'.join(lines))
 
 .. include:: <isonum.txt>
