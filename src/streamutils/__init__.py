@@ -1040,7 +1040,6 @@ def nomatch(pattern, match=False, flags=0, tokens=None):
     June
     July
 
-
     :param pattern: regexp pattern to test against
     :param match: if ``True``, use :py:func:`re.match` else use :py:func:`re.search` (default ``False``)
     :param flags: regexp flags

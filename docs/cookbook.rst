@@ -85,11 +85,11 @@ Ideally, you want one place to maintain your method signatures and documentation
     ...     lines=[]
     ...     lines.append('API')
     ...     lines.append('---')
-    ...     lines.append('.. module:: streamutils')
-    ...     lines.append(su.__doc__.strip())
+    ...     lines.append('.. module:: streamutils\n')
+    ...     lines.append('%s\n' % su.__doc__.strip())
     ...     for f in funcs:
-    ...         lines.append('.. method:: %s' % f['sig'])
-    ...         lines.append(locals()[f['name']].__doc__)
+    ...         lines.append('.. method:: %s\n' % f['sig'])
+    ...         lines.append('    %s\n' % locals()[f['name']].__doc__.strip())
     ...     apirst.writelines('\n'.join(lines))
 
 .. include:: <isonum.txt>
