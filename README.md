@@ -94,6 +94,7 @@ Implemented so far (equivalent `coreutils` function in brackets if the name is d
 These are functions designed to start a stream or process a stream. Result is something that can be iterated over
 
 Implemented:
+
 -   `read`, `gzread`, `bzread`, `head`, `tail`, `follow` to: read a file (`cat`); read a file from a gzip file (`zcat`); read a file from a bzip file (`bzcat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `find`, `fnmatches` to: look for filenames matching a pattern; screen names to see if they match
@@ -104,6 +105,7 @@ Implemented:
 -   `transform`, `convert` to: take user-defined function and use it to transform each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 
 Not yet implemented:
+
 -   `separate`, `combine`: to split the tokens in the stream so that the remainder of the stream receives sub-tokens; to combine subtokens back into tokens
 
 
@@ -111,6 +113,7 @@ Not yet implemented:
 These are functions that end a stream. Result may be a single value or a list (or something else - point is, not a generator).
 
 Implemented:
+
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
 -   `count`, `bag`, `sort`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
