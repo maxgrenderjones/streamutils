@@ -35,15 +35,16 @@ above:
 
 .. code:: python
 
-    >>> from __future__ import print_function, unicode_literals
+    >>> from __future__ import print_function
     >>> from streamutils import *
     >>> name_and_userid = read('examples/passwd') | matches('johndoe') | split([1,3], ':', ' ') | first()
     >>> print(name_and_userid)
     johndoe 1000
-    >>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped files
+    >>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped (and bzipped) files
     johndoe 1000
 
-streamutils also mimics the ``>`` and ``>>`` operators of bash-like shells, so we could have written (ignore the setup):
+streamutils also mimics the ``>`` and ``>>`` operators of bash-like
+shells, so to write to files you can write something like:
 
 .. code:: python
 
@@ -70,8 +71,6 @@ streamutils also mimics the ``>`` and ``>>`` operators of bash-like shells, so w
     ...     os.chdir(cwd)           # Go back to the original directory
     ...     shutil.rmtree(tempdir)  # Delete the temporary one
     ...
-
-
 
 Or perhaps you need to start off with output from a real command
 (streamutils wraps
@@ -119,13 +118,11 @@ Features
 Functions
 ---------
 
-A quick bit of terminology:
-
--  **pipeline**: A series of streamutil functions joined together with
-   pipes (i.e. ``|``)
--  **tokens**: things being passed through the pipeline
--  **stream**: the underlying data which is being broken into the tokens
-   that are passed through the pipeline
+A quick bit of terminology: - **pipeline**: A series of streamutil
+functions joined together with pipes (i.e. ``|``) - **tokens**: things
+being passed through the pipeline - **stream**: the underlying data
+which is being broken into the tokens that are passed through the
+pipeline
 
 Implemented so far (equivalent ``coreutils`` function in brackets if the
 name is different). Note that the following descriptions say 'lines',
@@ -138,46 +135,37 @@ Composable Functions
 These are functions designed to start a stream or process a stream.
 Result is something that can be iterated over
 
-Implemented:
+Implemented: - ``read``, ``gzread``, ``bzread``, ``head``, ``tail``,
+``follow`` to: read a file (``cat``); read a file from a gzip file
+(``zcat``); read a file from a bzip file (``bzcat``); extract the first
+few tokens of a stream; the last few tokens of a stream; to read new
+lines of a file as they are appended to it (waits forever like
+``tail -f``) - ``matches``, ``nomatch``, ``search``, ``replace`` to:
+match tokens (``grep``), find lines that don't match (``grep -v``), to
+look for patterns in a string (via ``re.search`` or ``re.match``) and
+return the groups of lines that match (possibly with substitution);
+replace elements of a string (i.e. implemented via ``str.replace``
+rather than a regexp) - ``find``, ``fnmatches`` to: look for filenames
+matching a pattern; screen names to see if they match - ``split``,
+``join``, ``words`` to: split a line (with ``str.split``) and return a
+subset of the line (``cut``); join a line back together (with
+``str.join``), find all non-overlapping matches that correspond to a
+'word' pattern and return a subset of them - ``sformat`` to: take a
+``dict`` or ``list`` of strings (e.g. the output of ``words``) and
+format it using the ``str.format`` syntax (``format`` is a builtin, so
+it would be bad manners not to rename this function). - ``sfilter``,
+``sfilterfalse`` to: take a user-defined function and return the items
+where it returns True; or False. If no function is given, it returns the
+items that are ``True`` (or ``False``) in a conditional context -
+``unique`` to: only return lines that haven't been seen already
+(``uniq``) - ``transform``, ``convert`` to: take user-defined function
+and use it to transform each line; take a ``list`` or ``dict`` (e.g. the
+output of ``search``) and call a user defined function on each element
+(e.g. to call ``int`` on fields that should be integers)
 
--  ``read``, ``gzread``, ``bzread``, ``head``, ``tail``, ``follow`` to:
-   read a file (``cat``); read a file from a gzip file (``zcat``); read
-   a file from a bzip file (``bzcat``); extract the first few tokens of
-   a stream; the last few tokens of a stream; to read new lines of a
-   file as they are appended to it (waits forever like ``tail -f``)
--  ``matches``, ``nomatch``, ``search``, ``replace`` to: match tokens
-   (``grep``), find lines that don't match (``grep -v``), to look for
-   patterns in a string (via ``re.search`` or ``re.match``) and return
-   the groups of lines that match (possibly with substitution); replace
-   elements of a string (i.e. implemented via ``str.replace`` rather
-   than a regexp)
--  ``find``, ``fnmatches`` to: look for filenames matching a pattern;
-   screen names to see if they match
--  ``split``, ``join``, ``words`` to: split a line (with ``str.split``)
-   and return a subset of the line (``cut``); join a line back together
-   with a separator (with ``str.join``), find all non-overlapping
-   matches that correspond to a 'word' pattern and return a subset of
-   them
--  ``sformat`` to: take a ``dict`` or ``list`` of strings (e.g. the
-   output of ``words``) and format it using the ``str.format`` syntax
-   (``format`` is a builtin, so it would be bad manners not to rename
-   this function).
--  ``sfilter``, ``sfilterfalse`` to: take a user-defined function and
-   return the items where it returns True; or False. If no function is
-   given, it returns the items that are ``True`` (or ``False``) in a
-   conditional context
--  ``unique`` to: only return lines that haven't been seen already
-   (``uniq``)
--  ``transform``, ``convert`` to: take user-defined function and use it
-   to transform each line; take a ``list`` or ``dict`` (e.g. the output
-   of ``search``) and call a user defined function on each element (e.g.
-   to call ``int`` on fields that should be integers)
-
-Not yet implemented:
-
--  ``separate``, ``combine``: to split the tokens in the stream so that
-   the remainder of the stream receives sub-tokens; to combine subtokens
-   back into tokens
+Not yet implemented: - ``separate``, ``combine``: to split the tokens in
+the stream so that the remainder of the stream receives sub-tokens; to
+combine subtokens back into tokens
 
 Terminators
 ~~~~~~~~~~~
@@ -185,23 +173,19 @@ Terminators
 These are functions that end a stream. Result may be a single value or a
 list (or something else - point is, not a generator).
 
-Implemented:
-
--  ``first``, ``last``, ``nth`` to: return the first item of the stream;
-   the last item of the stream; the nth item of the stream
--  ``count``, ``bag``, ``sort``, ``ssum``: to return the number of
-   tokens in the stream (``wc``); a ``collections.Counter`` (i.e.
-   ``dict`` subclass) with unique tokens as keys and a count of their
-   occurences as values; a sorted list of the tokens; add the tokens.
-   (Note that ``sort`` is a terminator as a reminder that that it needs
-   to exhaust the stream before it can start working)
--  ``write``: to write the output to a named file, or print it if no
-   filename is supplied, or to a writeable thing (e.g an already open
-   file) otherwise.
--  ``sreduce``: to do a pythonic ``reduce`` on the stream
--  ``action``: for every token, call a user-defined function
--  ``smax``, ``smin`` to: return the maximum or minimum element in the
-   stream
+Implemented: - ``first``, ``last``, ``nth`` to: return the first item of
+the stream; the last item of the stream; the nth item of the stream -
+``count``, ``bag``, ``sort``, ``ssum``: to return the number of tokens
+in the stream (``wc``); a ``collections.Counter`` (i.e. ``dict``
+subclass) with unique tokens as keys and a count of their occurences as
+values; a sorted list of the tokens; add the tokens. (Note that ``sort``
+is a terminator as a reminder that that it needs to exhaust the stream
+before it can start working) - ``write``: to write the output to a named
+file, or print it if no filename is supplied, or to a writeable thing
+(e.g an already open file) otherwise. - ``sreduce``: to do a pythonic
+``reduce`` on the stream - ``action``: for every token, call a
+user-defined function - ``smax``, ``smin`` to: return the maximum or
+minimum element in the stream
 
 Note that if you have a ``Iterable`` object (or one that behaves like an
 iterable), you can pass it into the first function of the pipeline as
@@ -279,10 +263,16 @@ Installation and Dependencies
 ``streamutils`` supports python >=2.6 (on 2.6 it needs the
 ``OrderedDict`` and ``Counter`` backports), pypy and python >=3 by using
 the `six <https://pythonhosted.org/six/>`__ library (note that >=1.4.1
-is required). Once it's been submitted to
-`pypi <https://pypi.python.org/>`__, if you've already got the
-dependencies installed, you'll be able to install streamutils from
-`pypi <https://pypi.python.org/>`__ by running:
+is required). For now, the easiest way to install it is to pull the
+latest version direct from github by running:
+
+::
+
+    pip install git+https://github.com/maxgrenderjones/streamutils.git
+
+Once it's been submitted to `pypi <https://pypi.python.org/>`__, if
+you've already got the dependencies installed, you'll be able to install
+streamutils from `pypi <https://pypi.python.org/>`__ by running:
 
 ::
 
@@ -327,24 +317,19 @@ https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 Status
 ------
 
-``streamutils`` is currently alpha status. By which I mean:
+``streamutils`` is currently alpha status. By which I mean: - I think it
+works fine, but the code test coverage is not yet as high as I'd like
+(is it ever?) - The API is unstable, i.e. the names of functions are
+still in flux, the order of the positional arguments may change, and the
+order of keyword arguments is almost guaranteed to change
 
--  I think it works fine, but the code test coverage is not yet as high
-   as I'd like (is it ever?)
--  The API is unstable, i.e. the names of functions are still in flux,
-   the order of the positional arguments may change, and the order of
-   keyword arguments is almost guaranteed to change
-
-So why release?
-
--  Because as soon as I managed to get ``streamutils`` working, I
-   couldn't stop thinking of all the places I'd want to use it
--  Because I value feedback on the API - if you think the names of
-   functions or their arguments would be more easily understood if they
-   were changed then open an issue and let's have the debate
--  Because it's a great demonstration of the crazy stuff you can do in
-   python by overloading operators
--  Why not?
+So why release? - Because as soon as I managed to get ``streamutils``
+working, I couldn't stop thinking of all the places I'd want to use it -
+Because I value feedback on the API - if you think the names of
+functions or their arguments would be more easily understood if they
+were changed then open an issue and let's have the debate - Because it's
+a great demonstration of the crazy stuff you can do in python by
+overloading operators - Why not?
 
 How does it work?
 -----------------
@@ -436,3 +421,5 @@ The project is licensed under the `Eclipse Public License - v
    :target: https://travis-ci.org/maxgrenderjones/streamutils/
 .. |Coverage Status| image:: https://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
    :target: https://coveralls.io/r/maxgrenderjones/streamutils?branch=master
+.. |Coverage Status| image:: http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master
+   :target: https://coveralls.io/r/maxgrenderjones/streamutils
