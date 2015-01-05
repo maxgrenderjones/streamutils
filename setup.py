@@ -4,12 +4,15 @@
 from __future__ import print_function, division
 import sys, os.path, multiprocessing #multiprocessing needed for bug workaround (http://bugs.python.org/issue15881#msg170215)
 
-if os.path.exists('ez_setup.py'):
+try:
+    from setuptools import setup, find_packages
+    from setuptools.command.test import test as TestCommand
+except:
     from ez_setup import use_setuptools
     use_setuptools()
+    from setuptools import setup, find_packages
+    from setuptools.command.test import test as TestCommand
 
-from setuptools import setup, find_packages
-from setuptools.command.test import test as TestCommand
 from distutils.command import build
 
 version=sys.version_info
@@ -17,10 +20,10 @@ version=sys.version_info
 class PyTest(TestCommand):
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = '--doctest-modules --cov src --cov-report term-missing --doctest-glob=*.rst --ignore setup.py --ignore docs/conf.py'.split()
+        self.test_args = '--doctest-modules --cov src --cov-report term-missing --doctest-glob=*.rst --ignore setup.py --ignore docs/conf.py --ignore docs/api.rst'.split()
         self.test_suite = True
     def run_tests(self):
-        #import here, cause outside the eggs aren't loaded
+        #import here, 'cause outside the eggs aren't loaded
         import pytest
         errno = pytest.main(self.test_args)
         sys.exit(errno)
