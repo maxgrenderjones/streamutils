@@ -1066,8 +1066,8 @@ def fnmatches(pathpattern, matchcase=False, tokens=None):
     README.md
 
 
-    :param pathpattern: Pattern to match (caution - ``/`` or ``os.sep`` is not special)
-    :param matchcase: Whether to match case-senitive on case-insensitive file systems
+    :param str pathpattern: Pattern to match (caution - ``/`` or ``os.sep`` is not special)
+    :param bool matchcase: Whether to match case-senitive on case-insensitive file systems
     :param tokens: list of filename strings to match
     """
     import fnmatch
@@ -1088,7 +1088,7 @@ def find(pathpattern=None, tokens=None):
     >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
     src/streamutils/__init__.py
 
-    :param pathpattern: :py:func:`glob.glob`-style pattern
+    :param str pathpattern: :py:func:`glob.glob`-style pattern
     :param tokens: A list of ``glob``-style patterns to search for
     :return: An iterator across the filenames found by the function
     """
@@ -1127,10 +1127,12 @@ def words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, token
 
     :param n: an integer indicating which word to return (first word is 1), a list of integers to select multiple words, or 0 to return all words. If
         n is an integer, the result is a string, if n is a list, the result is a list of strings
-    :param word: a pattern that will be used to select words using :py:func:`re.findall` - (default \S+)
-    :param outsep: a string separator to join together the words that are found into a new string (or None to output a list of words)
+    :type n: int or list
+    :param str word: a pattern that will be used to select words using :py:func:`re.findall` - (default \S+)
+    :param str outsep: a string separator to join together the words that are found into a new string (or None to output a list of words)
     :param names: (Optional) a name or list of names of the n extracted words, used to construct a dict to be passed down the pipeline
-    :param inject: For use with ``names`` - extra key/value pairs to include in the output dict
+    :type names: str or list
+    :param dict inject: For use with ``names`` - extra key/value pairs to include in the output dict
     :param flags: flags to pass to the re engine to compile the pattern
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
     :raise: ``ValueError`` if there are less than n (or max(n)) words in the string

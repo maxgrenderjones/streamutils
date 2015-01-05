@@ -88,7 +88,7 @@ Ideally, you want one place to maintain your method signatures and documentation
     ...     lines.append('.. module:: streamutils\n')
     ...     lines.append('%s\n' % su.__doc__.strip())
     ...     for f in funcs:
-    ...         lines.append('.. method:: %s\n' % f['sig'])
+    ...         lines.append('.. py:function:: %s\n' % f['sig'])
     ...         lines.append('    %s\n' % locals()[f['name']].__doc__.strip())
     ...     apirst.writelines('\n'.join(lines))
 

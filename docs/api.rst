@@ -21,14 +21,14 @@ A few things to note as you read the documentation and source code for streamuti
     a ``list``. Terminators return things e.g. the first item in the list (see ``first``), or a ``list`` of the items in
     the stream (see ``aslist``)
 
-.. method:: action(func, tokens=None)
+.. py:function:: action(func, tokens=None)
 
     Calls a function for every element that passes through the stream
 
     :param func: function to call
     :param tokens: a list of things
 
-.. method:: asdict(key=None, names=None, tokens=None)
+.. py:function:: asdict(key=None, names=None, tokens=None)
 
     Creates a dict or dict of dicts from the result of a stream
 
@@ -75,13 +75,13 @@ A few things to note as you read the documentation and source code for streamuti
     >>> d=split(sep=':', tokens=passwd) | asdict(key='username', names=['username', 'password', 'uid', 'gid', 'info', 'home', 'shell'])
     >>> print(d['root']['shell'])
     /bin/bash
-
-    :param key: If set, key to use to construct dictionary. If ``None`` (default), input must be a list of two item tuples
+    
+	:param key: If set, key to use to construct dictionary. If ``None`` (default), input must be a list of two item tuples
     :param names: If set, list of keys that will be zipped up with the line values to create a dictionary
     :param tokens: list of key-value tuples or list of lists or dicts
     :return: :py:class:`OrderedDict`
 
-.. method:: aslist(tokens=None)
+.. py:function:: aslist(tokens=None)
 
     Returns the output of the stream as a list. Used as a a more readable alternative to calling with ``end=True``
 
@@ -100,7 +100,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: Iterable object providing tokens (set by the pipeline)
     :return: a ``list`` containing all the tokens in the pipeline
 
-.. method:: bag(tokens=None)
+.. py:function:: bag(tokens=None)
 
     Counts the number of occurences of each of the elements of the stream
 
@@ -113,7 +113,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: list of items to count
     :return: A :py:class:`collections.Counter`
 
-.. method:: bzread(fname=None, encoding=None, tokens=None)
+.. py:function:: bzread(fname=None, encoding=None, tokens=None)
 
     Read a file or files from bzip2-ed archives and output the lines within the files.
 
@@ -124,7 +124,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
 
-.. method:: convert(converters, defaults={}, tokens=None)
+.. py:function:: convert(converters, defaults={}, tokens=None)
 
     Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions.
 
@@ -151,7 +151,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a series of ``dict`` or ``list`` of things to be converted or a series of things
     :raise: ``ValueError`` if the conversion fails and no default is supplied
 
-.. method:: count(tokens=None)
+.. py:function:: count(tokens=None)
 
     Counts the number of items that pass through the stream (cf ``wc -l``)
 
@@ -163,7 +163,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: Things to count
     :return: number of items in the stream as an ``int``
 
-.. method:: find(pathpattern=None, tokens=None)
+.. py:function:: find(pathpattern=None, tokens=None)
 
     Searches for files the match a given pattern. For example
 
@@ -173,11 +173,11 @@ A few things to note as you read the documentation and source code for streamuti
     >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
     src/streamutils/__init__.py
 
-    :param pathpattern: :py:func:`glob.glob`-style pattern
+    :param str pathpattern: :py:func:`glob.glob`-style pattern
     :param tokens: A list of ``glob``-style patterns to search for
     :return: An iterator across the filenames found by the function
 
-.. method:: first(default=None, tokens=None)
+.. py:function:: first(default=None, tokens=None)
 
     Returns the first item in the stream
 
@@ -185,7 +185,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a list of things
     :return: The first item in the stream
 
-.. method:: fnmatches(pathpattern, matchcase=False, tokens=None)
+.. py:function:: fnmatches(pathpattern, matchcase=False, tokens=None)
 
     Filter tokens for strings that match the pathpattern using :py:func:`fnmatch.fnmatch` or :py:func:`fnmatch.fnmatchcase`.
     Note that ``os.sep`` (i.e. ``\`` on windows) will be replaced with ``/`` to allow ``/`` to be used in the pattern
@@ -202,18 +202,18 @@ A few things to note as you read the documentation and source code for streamuti
     README.md
 
 
-    :param pathpattern: Pattern to match (caution - ``/`` or ``os.sep`` is not special)
-    :param matchcase: Whether to match case-senitive on case-insensitive file systems
+    :param str pathpattern: Pattern to match (caution - ``/`` or ``os.sep`` is not special)
+    :param bool matchcase: Whether to match case-senitive on case-insensitive file systems
     :param tokens: list of filename strings to match
 
-.. method:: follow(fname, encoding=None)
+.. py:function:: follow(fname, encoding=None)
 
     Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never returns)
 
     :param fname: File to read
     :param encoding: encoding to use to read the file
 
-.. method:: gzread(fname=None, encoding=None, tokens=None)
+.. py:function:: gzread(fname=None, encoding=None, tokens=None)
 
     Read a file or files from gzip-ed archives and output the lines within the files.
 
@@ -221,7 +221,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
 
-.. method:: head(n=10, fname=None, skip=0, encoding=None, tokens=None)
+.. py:function:: head(n=10, fname=None, skip=0, encoding=None, tokens=None)
 
     (Optionally) opens a file and passes through the first ``n`` items
 
@@ -248,7 +248,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: Encoding of file to open. If None, will try to guess the encoding based on coding= strings
     :param tokens: Stream of tokens to take the first few members of (i.e. not a list of filenames to take the first few lines of)
 
-.. method:: join(sep=None, tokens=None)
+.. py:function:: join(sep=None, tokens=None)
 
     Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`)
 
@@ -257,7 +257,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param sep: string separator to use to join each line in the stream
 
-.. method:: last(default=None, tokens=None,)
+.. py:function:: last(default=None, tokens=None,)
 
     Returns the final item in the stream
 
@@ -265,7 +265,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a list of things
     :return: The last item in the stream
 
-.. method:: matches(pattern, match=False, flags=0, v=False, tokens=None)
+.. py:function:: matches(pattern, match=False, flags=0, v=False, tokens=None)
 
     Filters the input for strings that match the pattern (think UNIX ``grep``)
 
@@ -280,7 +280,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param v: if ``True``, return strings that don't match (think UNIX ``grep -v``) (default ``False``)
     :param tokens: strings to match
 
-.. method:: nomatch(pattern, match=False, flags=0, tokens=None)
+.. py:function:: nomatch(pattern, match=False, flags=0, tokens=None)
 
     Filters the input for strings that don't match the pattern (think UNIX ``grep -v``)
 
@@ -295,7 +295,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param flags: regexp flags
     :param tokens: strings to match
 
-.. method:: nth(n, default=None, tokens=None)
+.. py:function:: nth(n, default=None, tokens=None)
 
     Returns the nth item in the stream, or a default if the list has less than n items
 
@@ -313,7 +313,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: The items in the pipeline
     :return: the nth item
 
-.. method:: read(fname=None, encoding=None, tokens=None)
+.. py:function:: read(fname=None, encoding=None, tokens=None)
 
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
 
@@ -325,7 +325,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
 
-.. method:: replace(old, new, tokens=None)
+.. py:function:: replace(old, new, tokens=None)
 
     Replace ``old`` in each tokens with ``new`` via call to ``.replace`` on each token (e.g. :py:func:`str.replace`)
 
@@ -333,7 +333,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param new: what to replace it with
     :param tokens: typically a series of strings
 
-.. method:: run(command, err=False, cwd=None, env=None, encoding=None, tokens=None)
+.. py:function:: run(command, err=False, cwd=None, env=None, encoding=None, tokens=None)
 
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
     expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
@@ -351,7 +351,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: Encoding to use to parse the output. Defaults to the default locale, or utf-8 if there isn't one
     :param tokens: Lines to pass into the command as standard in
 
-.. method:: sfilter(filterfunction=None, tokens=None)
+.. py:function:: sfilter(filterfunction=None, tokens=None)
 
     Take a user-defined function and passes through the tokens for which the function returns something that is True
     in a conditional context. If no function is supplied, passes through the True items. (Equivalent of :py:func:`filter`)
@@ -368,7 +368,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param filterfunction: function to use in the filter
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
 
-.. method:: sfilterfalse(filterfunction=None, tokens=None)
+.. py:function:: sfilterfalse(filterfunction=None, tokens=None)
 
     Passes through items for which the output of the filter function is False in a boolean context
 
@@ -379,7 +379,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param filterfunction: Function to use for filtering
     :param tokens: List of things to filter
 
-.. method:: sformat(pattern, tokens=None)
+.. py:function:: sformat(pattern, tokens=None)
 
     Takes in a list or dict of strings and formats them with the supplied pattern
 
@@ -396,7 +396,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param pattern: New-style python formatting pattern (see :py:func:`str.format`)
     :param tokens: list of lists of fomatting arguments or list of mappings
 
-.. method:: smax(key=None, tokens=None)
+.. py:function:: smax(key=None, tokens=None)
 
     Returns the largest item in the stream
 
@@ -409,7 +409,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a list of things
     :return: The largest item in the stream (as defined by python :py:func:`max`)
 
-.. method:: smin(key=None, tokens=None)
+.. py:function:: smin(key=None, tokens=None)
 
     Returns the smallest item in the stream
 
@@ -422,7 +422,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a list of things
     :return: The largest item in the stream (as defined by python :py:func:`min`)
 
-.. method:: split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None)
+.. py:function:: split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None)
 
     split separates the input using `.split(sep)`, by default splitting on whitespace (think :py:func:`str.split`)
 
@@ -438,7 +438,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param inject: For use with ``names`` - extra key/value pairs to include in the output dict
     :param tokens: strings to split
 
-.. method:: sreduce(func, initial=None, tokens=None)
+.. py:function:: sreduce(func, initial=None, tokens=None)
 
     Uses a function to :py:func:`reduce` the output to a single value
 
@@ -446,7 +446,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param initial: An initial value
     :return: Output of the reduction
 
-.. method:: sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None)
+.. py:function:: sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None)
 
     Provides access to a slice of the stream between ``start`` and ``stop`` at intervals of ``step``
 
@@ -467,7 +467,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: Unicode encoding to use to open files
     :param tokens: list of filenames to open
 
-.. method:: ssorted(cmp=None, key=None, reverse=False, tokens=None)
+.. py:function:: ssorted(cmp=None, key=None, reverse=False, tokens=None)
 
     Sorts the output of the stream (see documentation for :py:func:`sorted`). Warning: ``cmp`` was removed from ``sorted``
     in python 3
@@ -480,14 +480,14 @@ A few things to note as you read the documentation and source code for streamuti
 
     :return: a sorted list
 
-.. method:: ssum(start=0, tokens=None)
+.. py:function:: ssum(start=0, tokens=None)
 
     Adds the items that pass through the stream via call to :py:func:`sum`
 
     :param start: Initial value to start the sum, returned if the stream is empty
     :return: sum of all the values in the stream
 
-.. method:: strip(tokens=None)
+.. py:function:: strip(tokens=None)
 
     Runs ``.strip`` against each line of the stream
 
@@ -498,7 +498,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param tokens: A series of lines to remove whitespace from
 
-.. method:: tail(n=10, fname=None, encoding=None, tokens=None)
+.. py:function:: tail(n=10, fname=None, encoding=None, tokens=None)
 
     Returns a list of the last ``n`` items in the stream
 
@@ -519,7 +519,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: Will be set by the chain
     :return: A list of the last ``n`` items
 
-.. method:: transform(transformation, tokens=None)
+.. py:function:: transform(transformation, tokens=None)
 
     Applies a transformation function to each element of the stream
 
@@ -530,7 +530,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param transformation: function to apply
     :param tokens: list/iterable of objects
 
-.. method:: unique(tokens=None)
+.. py:function:: unique(tokens=None)
 
     Passes through values the first time they are seen
 
@@ -543,7 +543,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param tokens: Either set by the pipeline or provided as an initial list of items to pass through the pipeline
 
-.. method:: words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None)
+.. py:function:: words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None)
 
     Words looks for non-overlapping strings that match the word pattern. It passes on the words it finds down
     the stream. If outsep is None, it will pass on a list, otherwise it will join together the selected words with
@@ -571,15 +571,17 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param n: an integer indicating which word to return (first word is 1), a list of integers to select multiple words, or 0 to return all words. If
         n is an integer, the result is a string, if n is a list, the result is a list of strings
-    :param word: a pattern that will be used to select words using :py:func:`re.findall` - (default \S+)
-    :param outsep: a string separator to join together the words that are found into a new string (or None to output a list of words)
+    :type n: int or list
+    :param str word: a pattern that will be used to select words using :py:func:`re.findall` - (default \S+)
+    :param str outsep: a string separator to join together the words that are found into a new string (or None to output a list of words)
     :param names: (Optional) a name or list of names of the n extracted words, used to construct a dict to be passed down the pipeline
-    :param inject: For use with ``names`` - extra key/value pairs to include in the output dict
+    :type names: str or list
+    :param dict inject: For use with ``names`` - extra key/value pairs to include in the output dict
     :param flags: flags to pass to the re engine to compile the pattern
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
     :raise: ``ValueError`` if there are less than n (or max(n)) words in the string
 
-.. method:: write(fname=None, encoding=None, tokens=None)
+.. py:function:: write(fname=None, encoding=None, tokens=None)
 
     Writes the output of the stream to a file, or via ``print`` if no file is supplied. Calls to ``print`` include
     a call to :py:func:`str.rstrip` to remove trailing newlines
