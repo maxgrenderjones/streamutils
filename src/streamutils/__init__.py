@@ -8,7 +8,7 @@ A few things to note as you read the documentation and source code for streamuti
  *  the code is designed to run and test unmodified on python 2 & 3. That means that all prints are done via the print
     function, and strings (which are mostly unicode) can't be included in documentation output as they get 'u' prefixes
     on python 2 but not on python 3
- *  Although the examples pass in lists as the ``tokens`` argument to functions, in normal use, is unusual to use ``tokens``.
+ *  Although the examples pass in lists as the ``tokens`` argument to functions, in normal use it is unusual to use ``tokens``.
     Usually the input will come from a call to ``read`` or ``head`` or similar
  *  When a Terminator is used to pick out items (as opposed to iterating over the results of the stream) ``.close`` is called
     automatically on each of the generators in the stream. This gives each function a chance to clear up and e.g. close
@@ -16,7 +16,7 @@ A few things to note as you read the documentation and source code for streamuti
     either iterate all the way to the end or call ``.close`` on the stream
  *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
     normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
-    which python is in use
+    which python is in use to give a correct overall coverage report
  *  Once wrapped, ComposableFunctions return a generator that can be iterated over (or if called with ``end=True``) return
     a ``list``. Terminators return things e.g. the first item in the list (see ``first``), or a ``list`` of the items in
     the stream (see ``aslist``)
@@ -35,7 +35,7 @@ from six.moves import reduce, filter, filterfalse, zip   # These work - moves is
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
-import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect
+import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect, heapq
 
 from io import open, TextIOWrapper
 from contextlib import closing
@@ -587,7 +587,30 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     if PY3: # pragma: no cover
         return sorted(tokens, key=key, reverse=reverse)
     else:
-        return sorted(tokens, cmp, key, reverse)
+        return sorted(tokens, cmp=cmp, key=key, reverse=reverse)
+
+@wrapTerminator
+def nsmallest(n, key=None, tokens=None):
+    """
+    Returns the n smallest elements of the stream (see documentation for :py:func:`heapq.nsmallest`)
+
+    >>> from streamutils import *
+    >>> head(10, tokens=range(1,10)) | nsmallest(4)
+    [1, 2, 3, 4]
+    """
+    return heapq.nsmallest(n, tokens, key) if key else heapq.nsmallest(n, tokens)
+
+
+@wrapTerminator
+def nlargest(n, key=None, tokens=None):
+    """
+    Returns the n largest elements of the stream (see documentation for :py:func:`heapq.nlargest`)
+
+    >>> from streamutils import *
+    >>> head(10, tokens=range(1,10)) | nlargest(4)
+    [9, 8, 7, 6]
+    """
+    return heapq.nlargest(n, tokens, key) if key else heapq.nlargest(n, tokens)
 
 @wrapTerminator
 def smax(key=None, tokens=None):
