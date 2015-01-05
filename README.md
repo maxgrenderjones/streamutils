@@ -144,7 +144,7 @@ Installation and Dependencies
 
 `streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). For now, the easiest way to install it is to pull the latest version direct from github by running:
 
-	pip install git+https://github.com/maxgrenderjones/streamutils.git
+	pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
 
 Once it's been submitted to [pypi], if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
 

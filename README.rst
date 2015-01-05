@@ -280,7 +280,7 @@ latest version direct from github by running:
 
 ::
 
-    pip install git+https://github.com/maxgrenderjones/streamutils.git
+    pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
 
 Once it's been submitted to `pypi <https://pypi.python.org/>`__, if
 you've already got the dependencies installed, you'll be able to install
