@@ -31,6 +31,15 @@ So, suppose we want to see who's accessing us most, we can pick out the relevant
     >>> print('%s accessed us %d times' % (fan[0], fan[1]))
     kristina.az.com accessed us 118 times
 
+Or suppose we want to know how much data a known user has used
+
+.. doctest::
+
+   >>> logpattern2=r'''^([\w.-]+).*(\d+)'''  
+   >>> usage = find('examples/*log.bz2') | read() | search(logpattern2, names={1: 'User', 2: 'Data'}) | convert({'Data': int}) | aggsum(keys='User', values='Data')
+   >>> usage['kristina.az.com']['Data']
+   517
+
 
 Nesting streams to filter for files based on content
 ----------------------------------------------------

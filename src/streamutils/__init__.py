@@ -1005,22 +1005,36 @@ def follow(fname, encoding=None): #pragma: nocover - runs forever!
             yield line
 
 @wrap
-def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, restkey=None, restval=None, tokens=None, **fmtparams):
+def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0, restkey=None, restval=None, tokens=None, **fmtparams):
     """
     Reads a file or stream and parses it as a csv file using a :py:func:`csv.reader`. If names is set, uses a :py:func:`csv.DictReader`
 
+    >>> from streamutils import *
+    >>> data=[]
+    >>> data.append('Region;Revenue;Cost')
+    >>> data.append('North;10;5')
+    >>> data.append('West;15;7')
+    >>> csvread(delimiter=';', skip=1, tokens=data) | smap(lambda x: int(x[1])) | ssum()
+    25
+    >>> csvread(delimiter=';', skip=1, names=['Region', 'Revenue', 'Cost'], tokens=data) | smap(lambda x: int(x['Cost'])) | ssum()
+    12
+    >>> csvread(delimiter=';', skip=1, n=1, tokens=data) | unique() | write()
+    North
+    West
+
     :param fname: filename to read from - if None, reads from the stream
-    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode encoding)
+    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode encoding - if you run into trouble I suggest reading the file with ``read`` then passing the output through the ``unidecode`` library using ``smap`` before ``csvread``)
     :param dialect: the csv dialect (see :py:func:`csv.reader`)
     :param n: the columns to return (starting at 1). If set, names defines the names for these columns, not the names for all columns
     :param names: the keys to use in the DictReader (see the fieldnames keyword arg of :py:func:`csv.DictReader`)
+    :param skip: rows to skip (e.g. header rows) before reading data
     :param restkey: (see the restkey keyword arg of :py:func:`csv.DictReader`)
     :param restval: (see the restval keyword arg of :py:func:`csv.DictReader`)
     :param fmtparams: see :py:func:`csv.reader`
     """
     import csv
     with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as f:
-        reader = csv.reader(f, dialect, **fmtparams) if (n or not names) else csv.DictReader(f, names, restkey, restval, dialect, **fmtparams)
+        reader = csv.reader(islice(f, skip, None), dialect, **fmtparams) if (n or not names) else csv.DictReader(islice(f, skip, None), names, restkey, restval, dialect, **fmtparams)
         for row in reader:
             if n:
                 yield _ntodict(row, n, names)
