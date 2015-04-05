@@ -1056,7 +1056,7 @@ def bzread(fname=None, encoding=None, tokens=None):
     """
     Read a file or files from bzip2-ed archives and output the lines within the files.
 
-    >>> find('examples/*.bz2') | bzread() | head(1) | write()
+    >>> find('examples/NASA*.bz2') | bzread() | head(1) | write()
     199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] "GET /history/apollo/ HTTP/1.0" 200 6245
 
     :param fname:  filename or `list` of filenames
