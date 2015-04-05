@@ -698,6 +698,10 @@ def count(tokens=None):
 def ssum(start=0, tokens=None):
     """
     Adds the items that pass through the stream via call to :py:func:`sum`
+    
+    >>> from streamutils import *
+    >>> head(tokens=[1,2,3]) | ssum()
+    6
 
     :param start: Initial value to start the sum, returned if the stream is empty
     :return: sum of all the values in the stream
@@ -708,6 +712,7 @@ def ssum(start=0, tokens=None):
 def aggsum(keys=None, values=None, tokens=None):
     """
     If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
+    
     >>> from streamutils import *
     >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggsum()
     >>> sums == {'A': 5, 'B': 6, 'C': 60}
@@ -715,6 +720,7 @@ def aggsum(keys=None, values=None, tokens=None):
 
     If keys and values are set, given a series of dicts, return a dict of dicts of summed values, groupled by
     a tuple of the indicated keys. 
+    
     >>> from streamutils import *
     >>> data=[]
     >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
