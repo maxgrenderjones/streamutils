@@ -705,7 +705,7 @@ def aggsum(keys=None, values=None, tokens=None):
     """
     If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
     >>> from streamutils import *
-    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | su.aggsum()
+    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggsum()
     >>> sums == {'A': 5, 'B': 6, 'C': 60}
     True
 
@@ -749,8 +749,8 @@ def aggmean(tokens=None):
     totals={}
     for (key, value) in tokens:
         counts[key]=counts.get(key, 0)+1
-        totals[key]=result.get(key, 0)+value
-    return {key: totals[key]/counts[key] for key in counts }
+        totals[key]=totals.get(key, 0)+value
+    return {key: totals[key]/counts[key] for key in counts}
 
 @wrapTerminator
 def aggfirst(tokens=None):
