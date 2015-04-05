@@ -599,7 +599,7 @@ def nth(n, default=None, tokens=None):
     :param tokens: The items in the pipeline
     :return: the nth item
     """
-    return next(slice(tokens, n-1, None), default) # See nth recipe in https://docs.python.org/2/library/itertools.html#itertools.islice
+    return next(islice(tokens, n-1, None), default) # See nth recipe in https://docs.python.org/2/library/itertools.html#itertools.islice
 
 @wrapTerminator
 def ssorted(cmp=None, key=None, reverse=False, tokens=None):
@@ -705,7 +705,7 @@ def aggsum(keys=None, values=None, tokens=None):
     """
     If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
     >>> from streamutils import *
-    >>> sums = aggsum(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> sums = aggsum(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
     >>> sums == {'A': 5, 'B': 6, 'C': 60}
     True
 
@@ -739,7 +739,7 @@ def aggmean(tokens=None):
     Given a series of key, value items, returns a dict of summed values, grouped by key
 
     >>> from streamutils import *
-    >>> means = aggmean(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> means = aggmean(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
     >>> means == {'A': 2.5, 'B': 6, 'C': 20}
     True
 
@@ -758,7 +758,7 @@ def aggfirst(tokens=None):
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
     >>> from streamutils import *
-    >>> firsts = aggfirst(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> firsts = aggfirst(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
@@ -776,7 +776,7 @@ def agglast(tokens=None):
     Given a series of key, value items, returns a dict of the last value assigned to each key
 
     >>> from streamutils import *
-    >>> lasts = agglast(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> lasts = agglast(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
     >>> lasts == {'A': 3, 'B': 6, 'C': 30}
     True
 
