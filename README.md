@@ -23,6 +23,10 @@ Enough already! What does it do? Perhaps it's best explained with an example. Su
 johndoe 1000
 >>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped (and bzipped) files
 johndoe 1000
+>>> gzread('examples/passwd.gz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #You really ought to specify the unicode encoding
+johndoe 1000
+>>> read('examples/passwd.gz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #streamutils will attempt to transparently decompress compressed files (.gz, .bz2, .xz)
+johndoe 1000
 ```
 
 streamutils also mimics the `>` and `>>` operators of bash-like shells, so to write to files you can write something like:
@@ -78,7 +82,7 @@ Features
 --------
 
 -   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your pipeline, when each of the functions runs for just long enough to yield the next token in the stream (so you can use a pipeline on a big file without needing to have enough space to store the whole thing in memory)
--   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `filter`, whole-line transformations with `transform` or partial transformations with `convert`)
+-   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `filter`, whole-line transformations with `smap` or partial transformations with `convert`)
 -   Unicode-aware: all functions that read from files or file-like things take an `encoding` parameter
 
 Functions
@@ -96,13 +100,14 @@ These are functions designed to start a stream or process a stream. Result is so
 Implemented:
 
 -   `read`, `gzread`, `bzread`, `head`, `tail`, `follow` to: read a file (`cat`); read a file from a gzip file (`zcat`); read a file from a bzip file (`bzcat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
+- 	`csvread` to read a csv file
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `find`, `fnmatches` to: look for filenames matching a pattern; screen names to see if they match
 -   `split`, `join`, `words` to: split a line (with `str.split`) and return a subset of the line (``cut``); join a line back together (with `str.join`), find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them
 -   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `words`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If no function is given, it returns the items that are `True` (or `False`) in a conditional context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
--   `transform`, `convert` to: take user-defined function and use it to transform each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
+-   `smap`, `convert` to: take user-defined function and use it to `map` each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 
 Not yet implemented:
 
@@ -117,6 +122,8 @@ Implemented:
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
 -   `count`, `bag`, `sort`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
+-	`csvwrite`: to write to a csv file
+-	`aggsum`, `aggmean`, `aggfirst`, `agglast`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
 - 	`sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream

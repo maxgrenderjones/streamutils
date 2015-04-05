@@ -31,14 +31,14 @@ if parse_version(six.__version__) < parse_version('1.4.0'):  #pragma: nocover
     raise ImportError('six version >= 1.4.0 required')
 
 from six import StringIO, string_types, integer_types, MAXSIZE, PY3
-from six.moves import reduce, filter, filterfalse, zip   # These work - moves is a fake module
+from six.moves import reduce, map, filter, filterfalse, zip   # These work - moves is a fake module
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
 import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect, heapq
 
 from io import open, TextIOWrapper
-from contextlib import closing
+from contextlib import closing, contextmanager
 
 from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
 try:
@@ -193,54 +193,90 @@ class Terminator(Callable):
     def __getattr__(self, name):
         return getattr(self.func, name)
 
+@contextmanager
+def _noopcontext(arg):
+    '''Dummy context manager that can be used in a with block without actually doing anything'''
+    yield arg
+
 def _eopen(fname, encoding=None):
     '''
     Tries to guess what encoding to use to open a file based on first few lines. Supports xml and python
     declaration as per http://www.python.org/dev/peps/pep-0263/
+
+    Can transparently read from gzip, bzip or xz files (with backports.lzma if necessary), but then encoding support is dependent on 
+    underlying python support (2.x does not support encoding)
+    TODO: use _getNewlineReadable to support encoding
     '''
 
     if re.search('^[a-z+]+[:][/]{2}', fname):
         return _getNewlineReadable(urlopen(fname), encoding=encoding)
     else:
+        ext = os.path.splitext(fname)[1]
+        def decodingopener(openfunc):
+            def decodingopen(fname, mode=None, encoding=None): # add mode keyword for open compatibility
+                return _getNewlineReader(openfunc(fname, 'rb'), encoding) 
+            return decodingopen
+        if ext in {'.gz', '.gzip'}:
+            import gzip
+            if PY3 and sys.version_info.minor>=3:
+                return gzip.open
+            else:
+                openfunc=decodingopener(gzip.open)
+        elif ext in {'.bz2', }:
+            import bz2
+            if PY3 and sys.version_info.minor>=3:
+               openfunc=decodingopener(bz2.BZ2File)
+            else:
+                openfunc=bz2.BZ2File
+        elif ext in {'.xz', }:
+            try:
+                import lzma
+            except:
+                try:
+                    from backports import lzma
+                except:
+                    print('lzma module required to open .xz files - try installing backports.lzma')
+                    raise
+            if PY3 and sys.version_info.minor>=3:
+               openfunc=decodingopener(lzma.open)
+            else:
+                openfunc=lzma.open
+        else:
+            openfunc=open
         if not encoding and os.path.splitext(fname) in ['.rb', 'py']:
-            encoding=head(tokens=open(fname), n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
+            with openfunc(fname) as f:
+                encoding=head(tokens=f, n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
         if encoding:
             #print('Opening file %s with encoding %s' % (fname, encoding))
-            return open(fname, encoding=encoding)
+            return openfunc(fname, mode='rt', encoding=encoding)
         else:
             #print('Opening file %s with no encoding %s' % (fname, encoding))
-            return open(fname)
+            return openfunc(fname, mode='r', )
 
-def _getNewlineReadable(rawstream, encoding):
+def _getNewlineReader(rawstream, encoding):
     """
     TextIOWrapper before python 3.3 makes unreasonable assumptions about what attributes a readable thing has
     making it pretty much useless. The problem with ``codecs.getreader`` is that it doesn't automatically
     support universal newlines. Will close the underlying stream when finished
     :param rawstream:
     :param encoding:
-    :return:
+    :return: something you can iterate over to give unicode decoded lines. Call .close when finished with it (or use `with` and `closing` to do it for you)
     """
     if PY3 and sys.version_info.minor>=3:  # pragma: nocover
-        with closing(TextIOWrapper(rawstream, encoding=encoding)) as lines:
-            for line in lines:
-                yield line
+        return TextIOWrapper(rawstream, encoding=encoding)
     else:
-        reader=codecs.getreader(encoding or locale.getpreferredencoding())
-        with closing(reader(rawstream)) as lines:
-            for line in lines:
-                yield line
+        return codecs.getreader(encoding or locale.getpreferredencoding())(rawstream)
 
-
-def _gettokens(fname, encoding=None, tokens=None):
-    if fname:
-        return _eopen(fname, encoding)
-    elif tokens is not None:
-        if not isinstance(tokens, Iterator):
-            return iter(tokens)
-        else:
-            return tokens
-    else: #pragma: nocover
-        raise ValueError('Either fname or tokens must be set')
+def _getNewlineReadable(rawstream, encoding):
+    """
+    Create something that supports iteration to return text lines when given bytes, using encoding to translate between the two
+    :param rawstream: a file-like thing returning bytes
+    :param encoding: unicode encoding to use
+    :return: 
+    """
+    with closing(_getNewlineReader(rawstream, encoding=encoding)) as lines:
+        for line in lines:
+            yield line
 
 def _groupstodict(match, group, names, inject={}):
     """
@@ -300,9 +336,9 @@ def _groupstodict(match, group, names, inject={}):
 def _ntodict(results, n, names, inject={}):
     """
 
-    :param results: an list containing the results of a e.g. ``.split`` or ``.findall`` operation
+    :param results: a list containing e.g. the results of a ``.split`` or ``.findall`` operation
     :param group: An integer group to return or a list of groups
-    :param names: A dict of groups to dict keys used to form a dict to return
+    :param names: A dict of group number to dict keys used to form a dict to return
     :param inject: Extra key value pairs to inject into the returned dict
     :return:
     """
@@ -563,12 +599,7 @@ def nth(n, default=None, tokens=None):
     :param tokens: The items in the pipeline
     :return: the nth item
     """
-    cur=1
-    for line in tokens:
-        if cur==n:
-            return line
-        cur+=1
-    return default
+    return next(slice(tokens, n-1, None), default) # See nth recipe in https://docs.python.org/2/library/itertools.html#itertools.islice
 
 @wrapTerminator
 def ssorted(cmp=None, key=None, reverse=False, tokens=None):
@@ -668,6 +699,93 @@ def ssum(start=0, tokens=None):
     :return: sum of all the values in the stream
     """
     return sum(tokens, start)
+
+@wrapTerminator
+def aggsum(keys=None, values=None, tokens=None):
+    """
+    If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
+    >>> from streamutils import *
+    >>> sums = aggsum(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> sums == {'A': 5, 'B': 6, 'C': 60}
+    True
+
+    If keys and values are set, given a series of dicts, return a dict of dicts of summed values, groupled by
+    a tuple of the indicated keys. 
+    >>> from streamutils import *
+    >>> data=[]
+    >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
+    >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
+    >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
+    >>> sums = aggsum(keys='Region', values=['Revenue', 'Cost'], tokens=data)
+    >>> sums = {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
+    True
+
+    :return: dict mapping each key to the sum of all the values corresponding to that key
+    """
+    result={}
+    if keys and values:
+        for data in tokens:
+            aggkey= keys if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            for value in _wrapInIterable(values):
+                result.setdefault(aggkey, {})[value]=result.get(aggkey, {}).get(value, 0)+data[value]
+    else:
+        for (key, value) in tokens:
+            result[key]=result.get(key, 0)+value
+    return result
+
+@wrapTerminator
+def aggmean(tokens=None):
+    """
+    Given a series of key, value items, returns a dict of summed values, grouped by key
+
+    >>> from streamutils import *
+    >>> means = aggmean(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> means == {'A': 2.5, 'B': 6, 'C': 20}
+    True
+
+    :return: dict mapping each key to the sum of all the values corresponding to that key
+    """
+    counts={}
+    totals={}
+    for (key, value) in tokens:
+        counts[key]=counts.get(key, 0)+1
+        totals[key]=result.get(key, 0)+value
+    return {key: totals[key]/counts[key] for key in counts }
+
+@wrapTerminator
+def aggfirst(tokens=None):
+    """
+    Given a series of key, value items, returns a dict of the first value assigned to each key
+
+    >>> from streamutils import *
+    >>> firsts = aggfirst(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> firsts == {'A': 2, 'B': 6, 'C': 20}
+    True
+
+    :return: dict mapping each key to the first value corresponding to that key
+    """
+    result={}
+    for (key, value) in tokens:
+        if key not in result:
+            result[key]=value
+    return result
+
+@wrapTerminator
+def agglast(tokens=None):
+    """
+    Given a series of key, value items, returns a dict of the last value assigned to each key
+
+    >>> from streamutils import *
+    >>> lasts = agglast(tokens=[('A': 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> lasts == {'A': 3, 'B': 6, 'C': 30}
+    True
+
+    :return: dict mapping each key to the last value corresponding to that key
+    """
+    result={}
+    for (key, value) in tokens:
+        result[key]=value
+    return result
 
 @wrapTerminator
 def bag(tokens=None):
@@ -792,8 +910,7 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
     """
     fnames=_wrapInIterable(fname) or [iter(tokens)] #Bit ugly, but we want to make sure iterating through tokens skips them, even if tokens is a list
     for name in fnames:
-        tokens=_eopen(name, encoding) if fname else name
-        try:
+        with closing(_eopen(name, encoding)) if fname else _noopcontext(name) as tokens: #in the else case, name is actually the tokens originally passed
             if isinstance(n, integer_types):
                 for line in islice(tokens, skip, skip+n if n else MAXSIZE):
                     yield line
@@ -808,9 +925,6 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
                             yield line
                             break
                     start=i+1
-        finally:
-            if fname and tokens:
-                tokens.close()
 
 @wrap
 def tail(n=10, fname=None, encoding=None, tokens=None):
@@ -831,21 +945,14 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
     :param n: How many items to return e.g. ``n=5`` will return 5 items
     :param fname: A filename from which to read the last ``n`` items (10 by default)
     :param encoding: The enocding of the file
-    :param tokens: Will be set by the chain
+    :param tokens: Stream of tokens to take the last few members of (i.e. not a list of filenames to take the last few lines of)
     :return: A list of the last ``n`` items
     """
-    try:
-        tokens=_gettokens(fname, encoding, tokens) #@todo: change to match head
-        if tokens is not None:
-            return deque(tokens, n)
-        else: #pragma: nocover
-            ValueError('Either fname or tokens must be set')
-    finally:
-        if fname and tokens:
-            tokens.close()
+    with _eopen(fname, encoding) if fname else _noopcontext(tokens) as tokens:
+        return deque(tokens, n)
 
 @wrap
-def sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None):
+def sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None):
     """
     Provides access to a slice of the stream between ``start`` and ``stop`` at intervals of ``step``
 
@@ -860,19 +967,15 @@ def sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None
     To use setuptools in your package's setup.py, include this
 
     :param start: First token to return (first is 1)
-    :param stop: Maximum token to return (default some very large number - effectively read to the end)
+    :param stop: Maximum token to return (default: None implies read to the end)
     :param step: Interval between tokens
     :param fname: Filename to use as input
     :param encoding: Unicode encoding to use to open files
     :param tokens: list of filenames to open
     """
-    try:
-        tokens=_gettokens(fname, encoding, tokens) #@todo: change to match head
-        for line in islice(tokens, start-1, stop-1, step):
-            yield line
-    finally:
-        if fname and tokens:
-            tokens.close()
+    with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as tokens:
+        for line in islice(tokens, start-1, stop-1 if stop else None, step):
+            yield line  # Can't return the iterator or the file will be closed (I think!)
 
 @wrap
 def follow(fname, encoding=None): #pragma: nocover - runs forever!
@@ -882,14 +985,67 @@ def follow(fname, encoding=None): #pragma: nocover - runs forever!
     :param fname: File to read
     :param encoding: encoding to use to read the file
     """
-    f = _eopen(fname, encoding)
-    f.seek(0, os.SEEK_END)
-    while True:
-        line = f.readline()
-        if not line:
-            time.sleep(1)
-            continue
-        yield line
+    with closing(_eopen(fname, encoding)) as f:
+        f.seek(0, os.SEEK_END)
+        while True:
+            line = f.readline()
+            if not line:
+                time.sleep(1)
+                continue
+            yield line
+
+@wrap
+def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, restkey=None, restval=None, tokens=None, **fmtparams):
+    """
+    Reads a file or stream and parses it as a csv file using a :py:func:`csv.reader`. If names is set, uses a :py:func:`csv.DictReader`
+
+    :param fname: filename to read from - if None, reads from the stream
+    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode encoding)
+    :param dialect: the csv dialect (see :py:func:`csv.reader`)
+    :param n: the columns to return (starting at 1). If set, names defines the names for these columns, not the names for all columns
+    :param names: the keys to use in the DictReader (see the fieldnames keyword arg of :py:func:`csv.DictReader`)
+    :param restkey: (see the restkey keyword arg of :py:func:`csv.DictReader`)
+    :param restval: (see the restval keyword arg of :py:func:`csv.DictReader`)
+    :param fmtparams: see :py:func:`csv.reader`
+    """
+    import csv
+    with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as f:
+        reader = csv.reader(f, dialect, **fmtparams) if (n or not names) else csv.DictReader(f, names, restkey, restval, dialect, **fmtparams)
+        for row in reader:
+            if n:
+                yield _ntodict(row, n, names)
+            else:
+                yield row
+
+@wrapTerminator
+def csvwrite(fname=None, encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams):
+    """
+    Writes the stream to a file (or stdout) in csv format using :py:func:`csv.writer`. If names is set, uses a :py:func:`csv.DictWriter`
+
+    :param fname: filename to write to - if None, uses stdout
+    :param encoding: encoding to use to write the file
+    :param names: the keys to use in the DictWriter
+    """
+    import csv
+
+    if fname and isinstance(fname, string_types):
+        with open(fname, mode='wb') as f:
+            if names:
+                writer=csv.DictWriter(f, fieldnames=names, restval=restval, extrasaction=extrasaction, **fmtparams)
+                writer.writeheader()
+            else:
+                writer=csv.writer(f, dialect=dialect, **fmtparams)
+            for token in tokens: 
+                writer.writerow(token)
+    else:
+        f=fname if fname else sys.stdout
+        if names:
+            writer=csv.DictWriter(f, fieldnames=names, restval=restval, extrasaction=extrasaction, **fmtparams)
+            writer.writeheader()
+        else:
+            writer=csv.writer(f, dialect=dialect, **fmtparams)
+        for token in tokens: 
+            writer.writerow(token)
 
 @wrap
 def bzread(fname=None, encoding=None, tokens=None):
@@ -938,7 +1094,7 @@ def gzread(fname=None, encoding=None, tokens=None):
                 yield line
 
 @wrap
-def read(fname=None, encoding=None, tokens=None):
+def read(fname=None, encoding=None, skip=0, tokens=None):
     """
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
 
@@ -948,13 +1104,14 @@ def read(fname=None, encoding=None, tokens=None):
 
     :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
     :param encoding: encoding to use to open the file (if None, use platform default)
+    :param skip: number of lines to skip at the beginning of each file
     :param tokens: list of filenames
     """
     if fname or tokens:
         files=_wrapInIterable(fname) if fname else tokens
         for name in files:
             with closing(_eopen(name, encoding)) as f:
-                for line in f:
+                for line in islice(f, skip, None):
                     yield line
     else:  #pragma: nocover
         import fileinput
@@ -1250,22 +1407,21 @@ def convert(converters, defaults={}, tokens=None):
         yield line
 
 @wrap
-def transform(transformation, tokens=None):
+def smap(transformation, tokens=None):
     """
     Applies a transformation function to each element of the stream
 
     >>> from streamutils import *
-    >>> transform(lambda x: x.upper(), ['aeiou']) | write()
+    >>> smap(lambda x: x.upper(), ['aeiou']) | write()
     AEIOU
 
     :param transformation: function to apply
     :param tokens: list/iterable of objects
     """
-    for line in tokens:
-        yield transformation(line)
+    return map(transformation, tokens)
 
 @wrap
-def strip(tokens=None):
+def strip(chars=None, tokens=None):
     r"""
     Runs ``.strip`` against each line of the stream
 
@@ -1276,7 +1432,7 @@ def strip(tokens=None):
 
     :param tokens: A series of lines to remove whitespace from
     """
-    return transform(lambda x: x.strip(), tokens)
+    return map(lambda x: x.strip(chars), tokens)
 
 @wrap
 def sfilter(filterfunction=None, tokens=None):
@@ -1297,8 +1453,7 @@ def sfilter(filterfunction=None, tokens=None):
     :param filterfunction: function to use in the filter
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
     """
-    for line in filter(filterfunction, tokens):
-        yield line
+    return filter(filterfunction, tokens)
 
 @wrap
 def sfilterfalse(filterfunction=None, tokens=None):
@@ -1312,8 +1467,7 @@ def sfilterfalse(filterfunction=None, tokens=None):
     :param filterfunction: Function to use for filtering
     :param tokens: List of things to filter
     """
-    for line in filterfalse(filterfunction, tokens):
-        yield line
+    return filterfalse(filterfunction, tokens):
 
 @wrap
 def sformat(pattern, tokens=None):
