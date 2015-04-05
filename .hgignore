@@ -1,11 +1,12 @@
-.*.py[cod]
+syntax: glob
+*.py[cod]
 
 # C extensions
 .*.so
 
 # Packages
-.*.egg
-.*.egg-info
+*.egg*
+*.egg-info
 dist
 build
 _build
