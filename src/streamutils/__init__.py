@@ -1467,7 +1467,7 @@ def sfilterfalse(filterfunction=None, tokens=None):
     :param filterfunction: Function to use for filtering
     :param tokens: List of things to filter
     """
-    return filterfalse(filterfunction, tokens):
+    return filterfalse(filterfunction, tokens)
 
 @wrap
 def sformat(pattern, tokens=None):
