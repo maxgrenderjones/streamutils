@@ -750,7 +750,7 @@ def aggmean(tokens=None):
     for (key, value) in tokens:
         counts[key]=counts.get(key, 0)+1
         totals[key]=totals.get(key, 0)+value
-    return {key: totals[key]/counts[key] for key in counts}
+    return dict((key, totals[key]/counts[key]) for key in counts)
 
 @wrapTerminator
 def aggfirst(tokens=None):
