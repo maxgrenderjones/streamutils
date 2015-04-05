@@ -725,7 +725,7 @@ def aggsum(keys=None, values=None, tokens=None):
     result={}
     if keys and values:
         for data in tokens:
-            aggkey= keys if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            aggkey= data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
             for value in _wrapInIterable(values):
                 result.setdefault(aggkey, {})[value]=result.get(aggkey, {}).get(value, 0)+data[value]
     else:
