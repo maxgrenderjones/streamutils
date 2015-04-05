@@ -33,6 +33,7 @@ if version[0]==2 and version[1] < 7:  # version_info is a tuple in python2.6
     deps.append('ordereddict')
     deps.append('counter')
 shdeps=['pbs'] if sys.platform=='win32' else ['sh']
+lzmadeps=['backports.lzma'] if (version[0]<3 or version[1]<3) else []
 
 setup(
     name='streamutils',
@@ -46,7 +47,8 @@ setup(
     packages=find_packages('src'),
     extras_require={
         'deps': deps,
-        'sh': deps + shdeps
+        'sh': deps + shdeps,
+	'lzma': deps + lzmadeps,
     },
     tests_require=deps+shdeps+['pytest>=2.3.4', 'pytest-cov'],
     cmdclass = {'test': PyTest},
