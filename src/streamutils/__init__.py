@@ -716,7 +716,7 @@ def aggsum(keys=None, values=None, tokens=None):
     >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
     >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
     >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
-    >>> sums = su.head(tokens=data) | aggsum(keys='Region', values=['Revenue', 'Cost'])
+    >>> sums = head(tokens=data) | aggsum(keys='Region', values=['Revenue', 'Cost'])
     >>> sums == {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
     True
 
