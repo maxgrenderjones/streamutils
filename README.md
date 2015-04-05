@@ -127,6 +127,7 @@ Implemented:
 - 	`sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream
+-   `nsmallest`, `nlargest` to: find the n smallest or n largest elements in the stream
 
 Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first function of the pipeline as its `tokens` argument.
 
