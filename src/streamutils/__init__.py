@@ -216,19 +216,19 @@ def _eopen(fname, encoding=None):
             def decodingopen(fname, mode=None, encoding=None): # add mode keyword for open compatibility
                 return _getNewlineReader(openfunc(fname, 'rb'), encoding) 
             return decodingopen
-        if ext in {'.gz', '.gzip'}:
+        if ext in ['.gz', '.gzip']:
             import gzip
             if PY3 and sys.version_info.minor>=3:
                 return gzip.open
             else:
                 openfunc=decodingopener(gzip.open)
-        elif ext in {'.bz2', }:
+        elif ext in ['.bz2', ]:
             import bz2
             if PY3 and sys.version_info.minor>=3:
                openfunc=decodingopener(bz2.BZ2File)
             else:
                 openfunc=bz2.BZ2File
-        elif ext in {'.xz', }:
+        elif ext in ['.xz', ]:
             try:
                 import lzma
             except:
@@ -705,7 +705,7 @@ def aggsum(keys=None, values=None, tokens=None):
     """
     If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
     >>> from streamutils import *
-    >>> sums = aggsum(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) 
+    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | su.aggsum()
     >>> sums == {'A': 5, 'B': 6, 'C': 60}
     True
 
@@ -716,8 +716,8 @@ def aggsum(keys=None, values=None, tokens=None):
     >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
     >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
     >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
-    >>> sums = aggsum(keys='Region', values=['Revenue', 'Cost'], tokens=data)
-    >>> sums = {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
+    >>> sums = su.head(tokens=data) | aggsum(keys='Region', values=['Revenue', 'Cost'])
+    >>> sums == {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
     True
 
     :return: dict mapping each key to the sum of all the values corresponding to that key
@@ -739,7 +739,7 @@ def aggmean(tokens=None):
     Given a series of key, value items, returns a dict of summed values, grouped by key
 
     >>> from streamutils import *
-    >>> means = aggmean(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), (C, 10), (C, 30)]) 
+    >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggmean()
     >>> means == {'A': 2.5, 'B': 6, 'C': 20}
     True
 
@@ -758,7 +758,7 @@ def aggfirst(tokens=None):
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
     >>> from streamutils import *
-    >>> firsts = aggfirst(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) 
+    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggfirst()
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
@@ -776,7 +776,7 @@ def agglast(tokens=None):
     Given a series of key, value items, returns a dict of the last value assigned to each key
 
     >>> from streamutils import *
-    >>> lasts = agglast(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) 
+    >>> lasts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | agglast()
     >>> lasts == {'A': 3, 'B': 6, 'C': 30}
     True
 
