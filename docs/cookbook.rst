@@ -39,6 +39,7 @@ Suppose we want to find python source files that don't use ``/usr/bin/env`` to c
 
 .. doctest::
 
+    >>> from streamutils import *
     >>> import shutil, tempfile, os.path
     >>> try:
     ...     d=tempfile.mkdtemp()
@@ -48,7 +49,7 @@ Suppose we want to find python source files that don't use ``/usr/bin/env`` to c
     ...     with open(os.path.join(d, 'python2.7.py'), 'w') as f:
     ...         w=f.write('#!/usr/bin/python2.7')
     ...     #Now look for the files
-    ...     find('%s/*.py' % d) | sfilter(lambda x: read(x) | nomatch('/usr/bin/env') | first()) | transform(os.path.basename) | write()
+    ...     find('%s/*.py' % d) | sfilter(lambda x: read(x) | nomatch('/usr/bin/env') | first()) | smap(os.path.basename) | write()
     ... finally:
     ...     shutil.rmtree(d)
     python2.7.py
