@@ -41,7 +41,7 @@ setup(
     url='http://streamutils.readthedocs.org/en/latest/',
     author='Max Grender-Jones',
     author_email='MaxGrenderJones@gmail.com',
-    version='0.1.1-dev',
+    version='0.1.1.dev0',
     package_dir={"": "src"},
     packages=find_packages('src'),
     extras_require={
