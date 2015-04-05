@@ -25,7 +25,9 @@ johndoe 1000
 johndoe 1000
 >>> gzread('examples/passwd.gz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #You really ought to specify the unicode encoding
 johndoe 1000
->>> read('examples/passwd.gz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #streamutils will attempt to transparently decompress compressed files (.gz, .bz2, .xz)
+>>> read('examples/passwd.bz2', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #streamutils will attempt to transparently decompress compressed files (.gz, .bz2, .xz)
+johndoe 1000
+>>> read('examples/passwd.xz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() 
 johndoe 1000
 ```
 

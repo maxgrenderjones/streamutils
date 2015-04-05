@@ -219,15 +219,15 @@ def _eopen(fname, encoding=None):
         if ext in ['.gz', '.gzip']:
             import gzip
             if PY3 and sys.version_info.minor>=3:
-                return gzip.open
+                openfunc=gzip.open
             else:
                 openfunc=decodingopener(gzip.open)
         elif ext in ['.bz2', ]:
             import bz2
             if PY3 and sys.version_info.minor>=3:
-               openfunc=decodingopener(bz2.BZ2File)
+                openfunc=bz2.open
             else:
-                openfunc=bz2.BZ2File
+                openfunc=decodingopener(bz2.BZ2File)
         elif ext in ['.xz', ]:
             try:
                 import lzma
@@ -238,9 +238,9 @@ def _eopen(fname, encoding=None):
                     print('lzma module required to open .xz files - try installing backports.lzma')
                     raise
             if PY3 and sys.version_info.minor>=3:
-               openfunc=decodingopener(lzma.open)
-            else:
                 openfunc=lzma.open
+            else:
+                openfunc=decodingopener(lzma.open)
         else:
             openfunc=open
         if not encoding and os.path.splitext(fname) in ['.rb', 'py']:
@@ -248,10 +248,14 @@ def _eopen(fname, encoding=None):
                 encoding=head(tokens=f, n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
         if encoding:
             #print('Opening file %s with encoding %s' % (fname, encoding))
-            return openfunc(fname, mode='rt', encoding=encoding)
+            if PY3 and sys.version_info.minor>=3:
+                return openfunc(fname, mode='rt', encoding=encoding)
+            return openfunc(fname, mode='r', encoding=encoding)
         else:
             #print('Opening file %s with no encoding %s' % (fname, encoding))
-            return openfunc(fname, mode='r', )
+            if PY3 and sys.version_info.minor>=3:
+                return openfunc(fname, mode='rt')
+            return openfunc(fname, mode='r')
 
 def _getNewlineReader(rawstream, encoding):
     """
@@ -948,7 +952,7 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
     :param tokens: Stream of tokens to take the last few members of (i.e. not a list of filenames to take the last few lines of)
     :return: A list of the last ``n`` items
     """
-    with _eopen(fname, encoding) if fname else _noopcontext(tokens) as tokens:
+    with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as tokens:
         return deque(tokens, n)
 
 @wrap

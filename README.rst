@@ -42,6 +42,12 @@ above:
     johndoe 1000
     >>> gzread('examples/passwd.gz') | matches('johndoe') | split([1,3], ':', ' ') | write() #Can read from gzipped (and bzipped) files
     johndoe 1000
+    >>> gzread('examples/passwd.gz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #You really ought to specify the unicode encoding
+    johndoe 1000
+    >>> read('examples/passwd.bz2', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() #streamutils will attempt to transparently decompress compressed files (.gz, .bz2, .xz)
+    johndoe 1000
+    >>> read('examples/passwd.xz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() 
+    johndoe 1000
 
 streamutils also mimics the ``>`` and ``>>`` operators of bash-like
 shells, so to write to files you can write something like:
@@ -110,7 +116,7 @@ Features
 -  Extensible - to use your own functions in a pipeline, just decorate
    them, or use the built in functions that do the groundwork for the
    most obvious things you might want to do (i.e. custom filtering with
-   ``filter``, whole-line transformations with ``transform`` or partial
+   ``filter``, whole-line transformations with ``smap`` or partial
    transformations with ``convert``)
 -  Unicode-aware: all functions that read from files or file-like things
    take an ``encoding`` parameter
@@ -142,6 +148,7 @@ Implemented:
    a file from a bzip file (``bzcat``); extract the first few tokens of
    a stream; the last few tokens of a stream; to read new lines of a
    file as they are appended to it (waits forever like ``tail -f``)
+-  ``csvread`` to read a csv file
 -  ``matches``, ``nomatch``, ``search``, ``replace`` to: match tokens
    (``grep``), find lines that don't match (``grep -v``), to look for
    patterns in a string (via ``re.search`` or ``re.match``) and return
@@ -164,10 +171,10 @@ Implemented:
    conditional context
 -  ``unique`` to: only return lines that haven't been seen already
    (``uniq``)
--  ``transform``, ``convert`` to: take user-defined function and use it
-   to transform each line; take a ``list`` or ``dict`` (e.g. the output
-   of ``search``) and call a user defined function on each element (e.g.
-   to call ``int`` on fields that should be integers)
+-  ``smap``, ``convert`` to: take user-defined function and use it to
+   ``map`` each line; take a ``list`` or ``dict`` (e.g. the output of
+   ``search``) and call a user defined function on each element (e.g. to
+   call ``int`` on fields that should be integers)
 
 Not yet implemented:
 
@@ -194,10 +201,16 @@ Implemented:
 -  ``write``: to write the output to a named file, or print it if no
    filename is supplied, or to a writeable thing (e.g an already open
    file) otherwise.
+-  ``csvwrite``: to write to a csv file
+-  ``aggsum``, ``aggmean``, ``aggfirst``, ``agglast``: to aggregate by a
+   key or keys, and then sum / take the mean / take the first / take the
+   last
 -  ``sreduce``: to do a pythonic ``reduce`` on the stream
 -  ``action``: for every token, call a user-defined function
 -  ``smax``, ``smin`` to: return the maximum or minimum element in the
    stream
+-  ``nsmallest``, ``nlargest`` to: find the n smallest or n largest
+   elements in the stream
 
 Note that if you have a ``Iterable`` object (or one that behaves like an
 iterable), you can pass it into the first function of the pipeline as

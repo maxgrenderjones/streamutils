@@ -8,7 +8,7 @@ A few things to note as you read the documentation and source code for streamuti
  *  the code is designed to run and test unmodified on python 2 & 3. That means that all prints are done via the print
     function, and strings (which are mostly unicode) can't be included in documentation output as they get 'u' prefixes
     on python 2 but not on python 3
- *  Although the examples pass in lists as the ``tokens`` argument to functions, in normal use, is unusual to use ``tokens``.
+ *  Although the examples pass in lists as the ``tokens`` argument to functions, in normal use it is unusual to use ``tokens``.
     Usually the input will come from a call to ``read`` or ``head`` or similar
  *  When a Terminator is used to pick out items (as opposed to iterating over the results of the stream) ``.close`` is called
     automatically on each of the generators in the stream. This gives each function a chance to clear up and e.g. close
@@ -16,7 +16,7 @@ A few things to note as you read the documentation and source code for streamuti
     either iterate all the way to the end or call ``.close`` on the stream
  *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
     normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
-    which python is in use
+    which python is in use to give a correct overall coverage report
  *  Once wrapped, ComposableFunctions return a generator that can be iterated over (or if called with ``end=True``) return
     a ``list``. Terminators return things e.g. the first item in the list (see ``first``), or a ``list`` of the items in
     the stream (see ``aslist``)
@@ -27,6 +27,60 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param func: function to call
     :param tokens: a list of things
+
+.. py:function:: aggfirst(tokens=None)
+
+    Given a series of key, value items, returns a dict of the first value assigned to each key
+
+    >>> from streamutils import *
+    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggfirst()
+    >>> firsts == {'A': 2, 'B': 6, 'C': 20}
+    True
+
+    :return: dict mapping each key to the first value corresponding to that key
+
+.. py:function:: agglast(tokens=None)
+
+    Given a series of key, value items, returns a dict of the last value assigned to each key
+
+    >>> from streamutils import *
+    >>> lasts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | agglast()
+    >>> lasts == {'A': 3, 'B': 6, 'C': 30}
+    True
+
+    :return: dict mapping each key to the last value corresponding to that key
+
+.. py:function:: aggmean(tokens=None)
+
+    Given a series of key, value items, returns a dict of summed values, grouped by key
+
+    >>> from streamutils import *
+    >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggmean()
+    >>> means == {'A': 2.5, 'B': 6, 'C': 20}
+    True
+
+    :return: dict mapping each key to the sum of all the values corresponding to that key
+
+.. py:function:: aggsum(keys=None, values=None, tokens=None)
+
+    If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
+    >>> from streamutils import *
+    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggsum()
+    >>> sums == {'A': 5, 'B': 6, 'C': 60}
+    True
+
+    If keys and values are set, given a series of dicts, return a dict of dicts of summed values, groupled by
+    a tuple of the indicated keys. 
+    >>> from streamutils import *
+    >>> data=[]
+    >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
+    >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
+    >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
+    >>> sums = head(tokens=data) | aggsum(keys='Region', values=['Revenue', 'Cost'])
+    >>> sums == {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
+    True
+
+    :return: dict mapping each key to the sum of all the values corresponding to that key
 
 .. py:function:: asdict(key=None, names=None, tokens=None)
 
@@ -75,8 +129,8 @@ A few things to note as you read the documentation and source code for streamuti
     >>> d=split(sep=':', tokens=passwd) | asdict(key='username', names=['username', 'password', 'uid', 'gid', 'info', 'home', 'shell'])
     >>> print(d['root']['shell'])
     /bin/bash
-    
-	:param key: If set, key to use to construct dictionary. If ``None`` (default), input must be a list of two item tuples
+
+    :param key: If set, key to use to construct dictionary. If ``None`` (default), input must be a list of two item tuples
     :param names: If set, list of keys that will be zipped up with the line values to create a dictionary
     :param tokens: list of key-value tuples or list of lists or dicts
     :return: :py:class:`OrderedDict`
@@ -162,6 +216,27 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param tokens: Things to count
     :return: number of items in the stream as an ``int``
+
+.. py:function:: csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, restkey=None, restval=None, tokens=None, **fmtparams)
+
+    Reads a file or stream and parses it as a csv file using a :py:func:`csv.reader`. If names is set, uses a :py:func:`csv.DictReader`
+
+    :param fname: filename to read from - if None, reads from the stream
+    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode encoding)
+    :param dialect: the csv dialect (see :py:func:`csv.reader`)
+    :param n: the columns to return (starting at 1). If set, names defines the names for these columns, not the names for all columns
+    :param names: the keys to use in the DictReader (see the fieldnames keyword arg of :py:func:`csv.DictReader`)
+    :param restkey: (see the restkey keyword arg of :py:func:`csv.DictReader`)
+    :param restval: (see the restval keyword arg of :py:func:`csv.DictReader`)
+    :param fmtparams: see :py:func:`csv.reader`
+
+.. py:function:: csvwrite(fname=None, encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams)
+
+    Writes the stream to a file (or stdout) in csv format using :py:func:`csv.writer`. If names is set, uses a :py:func:`csv.DictWriter`
+
+    :param fname: filename to write to - if None, uses stdout
+    :param encoding: encoding to use to write the file
+    :param names: the keys to use in the DictWriter
 
 .. py:function:: find(pathpattern=None, tokens=None)
 
@@ -280,6 +355,14 @@ A few things to note as you read the documentation and source code for streamuti
     :param v: if ``True``, return strings that don't match (think UNIX ``grep -v``) (default ``False``)
     :param tokens: strings to match
 
+.. py:function:: nlargest(n, key=None, tokens=None)
+
+    Returns the n largest elements of the stream (see documentation for :py:func:`heapq.nlargest`)
+
+    >>> from streamutils import *
+    >>> head(10, tokens=range(1,10)) | nlargest(4)
+    [9, 8, 7, 6]
+
 .. py:function:: nomatch(pattern, match=False, flags=0, tokens=None)
 
     Filters the input for strings that don't match the pattern (think UNIX ``grep -v``)
@@ -294,6 +377,14 @@ A few things to note as you read the documentation and source code for streamuti
     :param match: if ``True``, use :py:func:`re.match` else use :py:func:`re.search` (default ``False``)
     :param flags: regexp flags
     :param tokens: strings to match
+
+.. py:function:: nsmallest(n, key=None, tokens=None)
+
+    Returns the n smallest elements of the stream (see documentation for :py:func:`heapq.nsmallest`)
+
+    >>> from streamutils import *
+    >>> head(10, tokens=range(1,10)) | nsmallest(4)
+    [1, 2, 3, 4]
 
 .. py:function:: nth(n, default=None, tokens=None)
 
@@ -313,7 +404,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: The items in the pipeline
     :return: the nth item
 
-.. py:function:: read(fname=None, encoding=None, tokens=None)
+.. py:function:: read(fname=None, encoding=None, skip=0, tokens=None)
 
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
 
@@ -323,6 +414,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
     :param encoding: encoding to use to open the file (if None, use platform default)
+    :param skip: number of lines to skip at the beginning of each file
     :param tokens: list of filenames
 
 .. py:function:: replace(old, new, tokens=None)
@@ -396,6 +488,17 @@ A few things to note as you read the documentation and source code for streamuti
     :param pattern: New-style python formatting pattern (see :py:func:`str.format`)
     :param tokens: list of lists of fomatting arguments or list of mappings
 
+.. py:function:: smap(transformation, tokens=None)
+
+    Applies a transformation function to each element of the stream
+
+    >>> from streamutils import *
+    >>> smap(lambda x: x.upper(), ['aeiou']) | write()
+    AEIOU
+
+    :param transformation: function to apply
+    :param tokens: list/iterable of objects
+
 .. py:function:: smax(key=None, tokens=None)
 
     Returns the largest item in the stream
@@ -446,7 +549,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param initial: An initial value
     :return: Output of the reduction
 
-.. py:function:: sslice(start=1, stop=MAXSIZE, step=1, fname=None, encoding=None, tokens=None)
+.. py:function:: sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None)
 
     Provides access to a slice of the stream between ``start`` and ``stop`` at intervals of ``step``
 
@@ -461,7 +564,7 @@ A few things to note as you read the documentation and source code for streamuti
     To use setuptools in your package's setup.py, include this
 
     :param start: First token to return (first is 1)
-    :param stop: Maximum token to return (default some very large number - effectively read to the end)
+    :param stop: Maximum token to return (default: None implies read to the end)
     :param step: Interval between tokens
     :param fname: Filename to use as input
     :param encoding: Unicode encoding to use to open files
@@ -487,7 +590,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param start: Initial value to start the sum, returned if the stream is empty
     :return: sum of all the values in the stream
 
-.. py:function:: strip(tokens=None)
+.. py:function:: strip(chars=None, tokens=None)
 
     Runs ``.strip`` against each line of the stream
 
@@ -516,19 +619,8 @@ A few things to note as you read the documentation and source code for streamuti
     :param n: How many items to return e.g. ``n=5`` will return 5 items
     :param fname: A filename from which to read the last ``n`` items (10 by default)
     :param encoding: The enocding of the file
-    :param tokens: Will be set by the chain
+    :param tokens: Stream of tokens to take the last few members of (i.e. not a list of filenames to take the last few lines of)
     :return: A list of the last ``n`` items
-
-.. py:function:: transform(transformation, tokens=None)
-
-    Applies a transformation function to each element of the stream
-
-    >>> from streamutils import *
-    >>> transform(lambda x: x.upper(), ['aeiou']) | write()
-    AEIOU
-
-    :param transformation: function to apply
-    :param tokens: list/iterable of objects
 
 .. py:function:: unique(tokens=None)
 
