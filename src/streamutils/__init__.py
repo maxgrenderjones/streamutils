@@ -50,6 +50,8 @@ from itertools import chain, islice
 from itertools import count as icount
 from functools import update_wrapper
 
+from .version import __version__
+
 __author__= 'maxgrenderjones'
 __docformat__ = 'restructuredtext'
 
@@ -744,26 +746,44 @@ def aggsum(keys=None, values=None, tokens=None):
     return result
 
 @wrapTerminator
-def aggmean(tokens=None):
+def aggmean(keys=None, values=None, tokens=None):
     """
-    Given a series of key, value items, returns a dict of summed values, grouped by key
+    If key is not set, given a series of key, value items, returns a dict of means, grouped by key
+    If keys is set, given a series of ``dict``s, returns the mean of the values grouped by
+    a tuple of the values corresponding to the keys
 
     >>> from streamutils import *
     >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggmean()
     >>> means == {'A': 2.5, 'B': 6, 'C': 20}
     True
 
+    >>> from streamutils import *
+    >>> means = head(tokens=[{'key': 1, 'value': 2}, {'key': 1, 'value': 4}, {'key': 2, 'value': 5}]) | aggmean('key', 'value')
+    >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
+    True
+
+    :param: keys `dict` keys for the values to aggregate on
+    :params: values `dict` keys for the values to be aggregated
     :return: dict mapping each key to the sum of all the values corresponding to that key
     """
     counts={}
     totals={}
-    for (key, value) in tokens:
-        counts[key]=counts.get(key, 0)+1
-        totals[key]=totals.get(key, 0)+value
-    return dict((key, totals[key]/counts[key]) for key in counts)
+    if keys and values:
+        values=_wrapInIterable(values)
+        for data in tokens:
+            aggkey= data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            for value in values:
+                counts[aggkey]=counts.get(aggkey, 0)+1
+                totals.setdefault(aggkey, {})[value]=totals.get(aggkey, {}).get(value, 0)+data[value]
+        return dict((key, dict((value, totals[key][value]/counts[key]) for value in values)) for key in totals)
+    else:
+        for (key, value) in tokens:
+            counts[key]=counts.get(key, 0)+1
+            totals[key]=totals.get(key, 0)+value
+        return dict((key, totals[key]/counts[key]) for key in counts)
 
 @wrapTerminator
-def aggfirst(tokens=None):
+def aggfirst(keys=None, values=None, tokens=None):
     """
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
@@ -772,16 +792,25 @@ def aggfirst(tokens=None):
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
+    :param: keys `dict` keys for the values to aggregate on
+    :params: values `dict` keys for the values to be aggregated
     :return: dict mapping each key to the first value corresponding to that key
     """
     result={}
-    for (key, value) in tokens:
-        if key not in result:
-            result[key]=value
+    if keys and values:
+        for data in tokens:
+            aggkey= data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            for value in _wrapInIterable(values):
+                if aggkey not in result:
+                    result.setdefault(aggkey, {})[value]=data[value]
+    else:
+        for (key, value) in tokens:
+            if key not in result:
+                result[key]=value
     return result
 
 @wrapTerminator
-def agglast(tokens=None):
+def agglast(keys=None, values=None, tokens=None):
     """
     Given a series of key, value items, returns a dict of the last value assigned to each key
 
@@ -793,8 +822,14 @@ def agglast(tokens=None):
     :return: dict mapping each key to the last value corresponding to that key
     """
     result={}
-    for (key, value) in tokens:
-        result[key]=value
+    if keys and values:
+        for data in tokens:
+            aggkey= data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            for value in _wrapInIterable(values):
+                result.setdefault(aggkey, {})[value]=data[value]
+    else:
+        for (key, value) in tokens:
+            result[key]=value
     return result
 
 @wrapTerminator
@@ -1288,9 +1323,9 @@ def find(pathpattern=None, tokens=None):
 
     >>> import os
     >>> from streamutils import find, replace, write
-    >>> find('src/*.py') | replace(os.sep, '/') | write()    #Only searches src directory
-    >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
-    src/streamutils/__init__.py
+    >>> find('src/version.py') | replace(os.sep, '/') | write()    #Only searches src directory
+    >>> find('src/*/version.py') | replace(os.sep, '/') | write()  #Searches full directory tree
+    src/streamutils/version.py
 
     :param str pathpattern: :py:func:`glob.glob`-style pattern
     :param tokens: A list of ``glob``-style patterns to search for
@@ -1380,9 +1415,31 @@ def join(sep=None, tokens=None):
         yield sep.join(line)
 
 @wrap
+def addkeys(keyfuncs, tokens=None):
+    """
+    Takes a ``dict`` of ``key: func`` and a stream of ``dict``s and sets the value of ``key`` to ``func(token)`` for each ``token`` in the stream
+
+    >>> from streamutils import *
+    >>> lines=[{'first': 'Jack', 'last': 'Bauer'}, {'first': 'Michelle', 'last': 'Dessler'}]
+    >>> for actor in addkeys({'initials': lambda x: x['first'][0]+x['last'][0]}, tokens=lines):
+    ...     print(actor['initials'])
+    JB
+    MD
+
+    :param keyfuncs: ``dict`` of ``key``: ``function``s
+    :param tokens: a stream of ``dict``s
+
+    """
+    for d in tokens:
+        for key, func in keyfuncs.items():
+            d[key]=func(d)
+        yield d
+
+@wrap
 def convert(converters, defaults={}, tokens=None):
     """
     Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions.
+    If a ``ValueError`` is thrown, sets the field to the default for that field if supplied, otherwise reraises
 
     >>> from streamutils import *
     >>> lines=['Alice in Wonderland 1951', 'Dumbo 1941']
