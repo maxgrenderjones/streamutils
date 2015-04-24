@@ -35,7 +35,7 @@ from six.moves import reduce, map, filter, filterfalse, zip   # These work - mov
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
 
-import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect, heapq
+import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect, heapq, bz2, gzip
 
 from io import open, TextIOWrapper
 from contextlib import closing, contextmanager
@@ -200,6 +200,30 @@ def _noopcontext(arg):
     '''Dummy context manager that can be used in a with block without actually doing anything'''
     yield arg
 
+@contextmanager
+def _wrappedopen(openfunc, fname, encoding, mode=True):
+    if PY3 and sys.version_info.minor>=3:
+        with openfunc(fname, mode='t') as f:
+            yield f
+    elif openfunc==bz2.BZ2File: # Abominable hack, as you can't assign attributes to a C-drived thing like BZ2File
+        from collections import namedtuple
+        from types import MethodType
+        fileapi=namedtuple('fileapi', ['read', 'read1', 'seek', 'close', 'closed'])
+        fileapi.readable =lambda self: True
+        fileapi.writable =lambda self: False
+        fileapi.seekable =lambda self: True
+        fileapi.flush = lambda self: 0 # Flush shouldn't be called for reads
+        with openfunc(fname, mode='rb') as f:
+            fa=fileapi(f.read, f.read, f.seek, f.close, f.closed)
+            with TextIOWrapper(fa, encoding=encoding) as t:
+                yield t
+    else:
+        with openfunc(fname, mode='rb') if mode else openfunc(fname) as f:
+            f.read1=f.read
+            with TextIOWrapper(f, encoding=encoding) as t:
+                yield t
+
+@contextmanager            
 def _eopen(fname, encoding=None):
     '''
     Tries to guess what encoding to use to open a file based on first few lines. Supports xml and python
@@ -211,25 +235,14 @@ def _eopen(fname, encoding=None):
     '''
 
     if re.search('^[a-z+]+[:][/]{2}', fname):
-        return _getNewlineReadable(urlopen(fname), encoding=encoding)
+        with closing(urlopen(fname)) as f:
+            yield f
     else:
         ext = os.path.splitext(fname)[1]
-        def decodingopener(openfunc):
-            def decodingopen(fname, mode=None, encoding=None): # add mode keyword for open compatibility
-                return _getNewlineReader(openfunc(fname, 'rb'), encoding) 
-            return decodingopen
         if ext in ['.gz', '.gzip']:
-            import gzip
-            if PY3 and sys.version_info.minor>=3:
-                openfunc=gzip.open
-            else:
-                openfunc=decodingopener(gzip.open)
+            openfunc=gzip.open
         elif ext in ['.bz2', ]:
-            import bz2
-            if PY3 and sys.version_info.minor>=3:
-                openfunc=bz2.open
-            else:
-                openfunc=decodingopener(bz2.BZ2File)
+            openfunc=bz2.BZ2File
         elif ext in ['.xz', ]:
             try:
                 import lzma
@@ -239,50 +252,16 @@ def _eopen(fname, encoding=None):
                 except:
                     print('lzma module required to open .xz files - try installing backports.lzma')
                     raise
-            if PY3 and sys.version_info.minor>=3:
-                openfunc=lzma.open
-            else:
-                openfunc=decodingopener(lzma.open)
+            openfunc=lzma.open
         else:
             openfunc=open
         if not encoding and os.path.splitext(fname) in ['.rb', 'py']:
-            with openfunc(fname) as f:
+            with _wrappedopen(openfunc, fname, encoding) as f:
                 encoding=head(tokens=f, n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
-        if encoding:
-            #print('Opening file %s with encoding %s' % (fname, encoding))
-            if PY3 and sys.version_info.minor>=3:
-                return openfunc(fname, mode='rt', encoding=encoding)
-            return openfunc(fname, mode='r', encoding=encoding)
-        else:
-            #print('Opening file %s with no encoding %s' % (fname, encoding))
-            if PY3 and sys.version_info.minor>=3:
-                return openfunc(fname, mode='rt')
-            return openfunc(fname, mode='r')
 
-def _getNewlineReader(rawstream, encoding):
-    """
-    TextIOWrapper before python 3.3 makes unreasonable assumptions about what attributes a readable thing has
-    making it pretty much useless. The problem with ``codecs.getreader`` is that it doesn't automatically
-    support universal newlines. Will close the underlying stream when finished
-    :param rawstream:
-    :param encoding:
-    :return: something you can iterate over to give unicode decoded lines. Call .close when finished with it (or use `with` and `closing` to do it for you)
-    """
-    if PY3 and sys.version_info.minor>=3:  # pragma: nocover
-        return TextIOWrapper(rawstream, encoding=encoding)
-    else:
-        return codecs.getreader(encoding or locale.getpreferredencoding())(rawstream)
-
-def _getNewlineReadable(rawstream, encoding):
-    """
-    Create something that supports iteration to return text lines when given bytes, using encoding to translate between the two
-    :param rawstream: a file-like thing returning bytes
-    :param encoding: unicode encoding to use
-    :return: 
-    """
-    with closing(_getNewlineReader(rawstream, encoding=encoding)) as lines:
-        for line in lines:
-            yield line
+        #print('Opening file %s with encoding %s' % (fname, encoding))
+        with _wrappedopen(openfunc, fname, encoding) as f:
+            yield f
 
 def _groupstodict(match, group, names, inject={}):
     """
@@ -437,7 +416,7 @@ def _wrapInIterable(item):
         return [item]
 
 @wrap
-def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
+def run(command, err=False, cwd=None, env=None, tokens=None):
     """
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
     expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
@@ -464,9 +443,7 @@ def run(command, err=False, cwd=None, env=None, encoding=None, tokens=None):
     else:
         output=subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=stdin, env=env, universal_newlines=True).stdout
 
-    if PY3:
-        return output
-    return _getNewlineReadable(output, encoding or locale.getdefaultlocale()[1] or 'utf-8')
+    return output
 
 @wrapTerminator
 def first(default=None, tokens=None):
@@ -955,7 +932,7 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
     """
     fnames=_wrapInIterable(fname) or [iter(tokens)] #Bit ugly, but we want to make sure iterating through tokens skips them, even if tokens is a list
     for name in fnames:
-        with closing(_eopen(name, encoding)) if fname else _noopcontext(name) as tokens: #in the else case, name is actually the tokens originally passed
+        with _eopen(name, encoding) if fname else _noopcontext(name) as tokens: #in the else case, name is actually the tokens originally passed
             if isinstance(n, integer_types):
                 for line in islice(tokens, skip, skip+n if n else MAXSIZE):
                     yield line
@@ -993,7 +970,7 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
     :param tokens: Stream of tokens to take the last few members of (i.e. not a list of filenames to take the last few lines of)
     :return: A list of the last ``n`` items
     """
-    with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as tokens:
+    with _eopen(fname, encoding) if fname else _noopcontext(tokens) as tokens:
         return deque(tokens, n)
 
 @wrap
@@ -1018,7 +995,7 @@ def sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None):
     :param encoding: Unicode encoding to use to open files
     :param tokens: list of filenames to open
     """
-    with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as tokens:
+    with _eopen(fname, encoding) if fname else _noopcontext(tokens) as tokens:
         for line in islice(tokens, start-1, stop-1 if stop else None, step):
             yield line  # Can't return the iterator or the file will be closed (I think!)
 
@@ -1030,7 +1007,7 @@ def follow(fname, encoding=None): #pragma: nocover - runs forever!
     :param fname: File to read
     :param encoding: encoding to use to read the file
     """
-    with closing(_eopen(fname, encoding)) as f:
+    with _eopen(fname, encoding) as f:
         f.seek(0, os.SEEK_END)
         while True:
             line = f.readline()
@@ -1068,7 +1045,7 @@ def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0,
     :param fmtparams: see :py:func:`csv.reader`
     """
     import csv
-    with closing(_eopen(fname, encoding)) if fname else _noopcontext(tokens) as f:
+    with _eopen(fname, encoding) if fname else _noopcontext(tokens) as f:
         reader = csv.reader(islice(f, skip, None), dialect, **fmtparams) if (n or not names) else csv.DictReader(islice(f, skip, None), names, restkey, restval, dialect, **fmtparams)
         for row in reader:
             if n:
@@ -1118,16 +1095,10 @@ def bzread(fname=None, encoding=None, tokens=None):
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
     """
-    from bz2 import BZ2File
     files=_wrapInIterable(fname) if fname else tokens
     for name in files:
-        if PY3 and sys.version_info.minor>=3:  #pragma: nocover
-                from bz2 import open as bzopen
-                with bzopen(name, 'rt', encoding=encoding) as lines:
-                    for line in lines:
-                        yield line
-        else:
-            for line in _getNewlineReadable(BZ2File(name, 'rb'), encoding):
+        with _wrappedopen(bz2.BZ2File, name, encoding=encoding) as lines:
+            for line in lines:
                 yield line
 
 @wrap
@@ -1144,12 +1115,8 @@ def gzread(fname=None, encoding=None, tokens=None):
     if files is None:  #pragma: nocover
         raise ValueError('No filename or stream supplied')
     for name in files:
-        if PY3 and sys.version_info.minor>=3: #pragma: nocover
-            with gzopen(name, 'rt', encoding=encoding) as lines:
-                for line in lines:
-                    yield line
-        else:
-            for line in _getNewlineReadable(gzopen(name, 'rb'), encoding=encoding):
+        with _wrappedopen(gzopen, name, encoding=encoding) as lines:
+            for line in lines:
                 yield line
 
 @wrap
@@ -1169,7 +1136,7 @@ def read(fname=None, encoding=None, skip=0, tokens=None):
     if fname or tokens:
         files=_wrapInIterable(fname) if fname else tokens
         for name in files:
-            with closing(_eopen(name, encoding)) as f:
+            with _eopen(name, encoding) as f:
                 for line in islice(f, skip, None):
                     yield line
     else:  #pragma: nocover
