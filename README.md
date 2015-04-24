@@ -126,6 +126,7 @@ Implemented:
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
 -	`csvwrite`: to write to a csv file
 -	`aggsum`, `aggmean`, `aggfirst`, `agglast`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
+-	`addkeys`: that takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
 - 	`sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream

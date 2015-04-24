@@ -205,6 +205,9 @@ Implemented:
 -  ``aggsum``, ``aggmean``, ``aggfirst``, ``agglast``: to aggregate by a
    key or keys, and then sum / take the mean / take the first / take the
    last
+-  ``addkeys``: that takes a ``dict`` of ``key``, ``func`` mappings and
+   calls the ``func`` against each ``dict`` in the stream to get a value
+   to assign to each ``key``
 -  ``sreduce``: to do a pythonic ``reduce`` on the stream
 -  ``action``: for every token, call a user-defined function
 -  ``smax``, ``smin`` to: return the maximum or minimum element in the
