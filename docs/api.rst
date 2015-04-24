@@ -28,7 +28,21 @@ A few things to note as you read the documentation and source code for streamuti
     :param func: function to call
     :param tokens: a list of things
 
-.. py:function:: aggfirst(tokens=None)
+.. py:function:: addkeys(keyfuncs, tokens=None)
+
+    Takes a ``dict`` of ``key: func`` and a stream of ``dict``s and sets the value of ``key`` to ``func(token)`` for each ``token`` in the stream
+
+    >>> from streamutils import *
+    >>> lines=[{'first': 'Jack', 'last': 'Bauer'}, {'first': 'Michelle', 'last': 'Dessler'}]
+    >>> for actor in addkeys({'initials': lambda x: x['first'][0]+x['last'][0]}, tokens=lines):
+    ...     print(actor['initials'])
+    JB
+    MD
+
+    :param keyfuncs: ``dict`` of ``key``: ``function``s
+    :param tokens: a stream of ``dict``s
+
+.. py:function:: aggfirst(keys=None, values=None, tokens=None)
 
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
@@ -37,9 +51,11 @@ A few things to note as you read the documentation and source code for streamuti
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
+    :param: keys `dict` keys for the values to aggregate on
+    :params: values `dict` keys for the values to be aggregated
     :return: dict mapping each key to the first value corresponding to that key
 
-.. py:function:: agglast(tokens=None)
+.. py:function:: agglast(keys=None, values=None, tokens=None)
 
     Given a series of key, value items, returns a dict of the last value assigned to each key
 
@@ -50,15 +66,24 @@ A few things to note as you read the documentation and source code for streamuti
 
     :return: dict mapping each key to the last value corresponding to that key
 
-.. py:function:: aggmean(tokens=None)
+.. py:function:: aggmean(keys=None, values=None, tokens=None)
 
-    Given a series of key, value items, returns a dict of summed values, grouped by key
+    If key is not set, given a series of key, value items, returns a dict of means, grouped by key
+    If keys is set, given a series of ``dict``s, returns the mean of the values grouped by
+    a tuple of the values corresponding to the keys
 
     >>> from streamutils import *
     >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggmean()
     >>> means == {'A': 2.5, 'B': 6, 'C': 20}
     True
 
+    >>> from streamutils import *
+    >>> means = head(tokens=[{'key': 1, 'value': 2}, {'key': 1, 'value': 4}, {'key': 2, 'value': 5}]) | aggmean('key', 'value')
+    >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
+    True
+
+    :param: keys `dict` keys for the values to aggregate on
+    :params: values `dict` keys for the values to be aggregated
     :return: dict mapping each key to the sum of all the values corresponding to that key
 
 .. py:function:: aggsum(keys=None, values=None, tokens=None)
@@ -183,6 +208,7 @@ A few things to note as you read the documentation and source code for streamuti
 .. py:function:: convert(converters, defaults={}, tokens=None)
 
     Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions.
+    If a ``ValueError`` is thrown, sets the field to the default for that field if supplied, otherwise reraises
 
     >>> from streamutils import *
     >>> lines=['Alice in Wonderland 1951', 'Dumbo 1941']
@@ -260,9 +286,9 @@ A few things to note as you read the documentation and source code for streamuti
 
     >>> import os
     >>> from streamutils import find, replace, write
-    >>> find('src/*.py') | replace(os.sep, '/') | write()    #Only searches src directory
-    >>> find('src/*/*.py') | replace(os.sep, '/') | write() #Searches full directory tree
-    src/streamutils/__init__.py
+    >>> find('src/version.py') | replace(os.sep, '/') | write()    #Only searches src directory
+    >>> find('src/*/version.py') | replace(os.sep, '/') | write()  #Searches full directory tree
+    src/streamutils/version.py
 
     :param str pathpattern: :py:func:`glob.glob`-style pattern
     :param tokens: A list of ``glob``-style patterns to search for
@@ -441,7 +467,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param new: what to replace it with
     :param tokens: typically a series of strings
 
-.. py:function:: run(command, err=False, cwd=None, env=None, encoding=None, tokens=None)
+.. py:function:: run(command, err=False, cwd=None, env=None, tokens=None)
 
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
     expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
