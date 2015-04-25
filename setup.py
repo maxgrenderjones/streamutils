@@ -28,6 +28,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.test_args)
         sys.exit(errno)
 
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src','streamutils','version.py')).read())
 deps=['six>=1.4.1', 'setuptools']
 if version[0]==2 and version[1] < 7:  # version_info is a tuple in python2.6
     deps.append('ordereddict')
@@ -42,15 +43,15 @@ setup(
     url='http://streamutils.readthedocs.org/en/latest/',
     author='Max Grender-Jones',
     author_email='MaxGrenderJones@gmail.com',
-    version='0.1.1.dev0',
+    version=__version__,
     package_dir={"": "src"},
     packages=find_packages('src'),
     extras_require={
         'deps': deps,
         'sh': deps + shdeps,
-	'lzma': deps + lzmadeps,
+        'lzma': deps + lzmadeps,
     },
-    tests_require=deps+shdeps+['pytest>=2.3.4', 'pytest-cov'],
+    tests_require=deps+shdeps+lzmadeps+['pytest>=2.3.4', 'pytest-cov'],
     cmdclass = {'test': PyTest},
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
     classifiers=[

@@ -30,7 +30,7 @@ import six
 if parse_version(six.__version__) < parse_version('1.4.0'):  #pragma: nocover
     raise ImportError('six version >= 1.4.0 required')
 
-from six import StringIO, string_types, integer_types, MAXSIZE, PY3
+from six import StringIO, string_types, integer_types, MAXSIZE, PY2, PY3
 from six.moves import reduce, map, filter, filterfalse, zip   # These work - moves is a fake module
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen
@@ -202,25 +202,32 @@ def _noopcontext(arg):
 
 @contextmanager
 def _wrappedopen(openfunc, fname, encoding, mode=True):
-    if PY3 and sys.version_info.minor>=3:
-        with openfunc(fname, mode='t') as f:
+    #Horrible special-cased hacks
+    if PY3 and openfunc==urlopen:
+        with urlopen(fname) as f:
+            with TextIOWrapper(f, encoding=encoding) as t:
+                yield t
+    elif PY3 and sys.version_info.minor>=3:
+        with openfunc(fname, mode='rt', encoding=encoding) as f:
             yield f
-    elif openfunc==bz2.BZ2File: # Abominable hack, as you can't assign attributes to a C-drived thing like BZ2File
+    elif openfunc==urlopen or PY2 and sys.version_info[1]==6 and openfunc==gzip.open:
+        with closing(openfunc(fname)) as f:
+            yield codecs.getreader(encoding or locale.getpreferredencoding())(f)
+    else:
+        # Abominable hacks, as you can't assign attributes to a C-drived thing like BZ2File
+        # and under python2.6 gzip doesn't have a seekable attribute
         from collections import namedtuple
         from types import MethodType
-        fileapi=namedtuple('fileapi', ['read', 'read1', 'seek', 'close', 'closed'])
-        fileapi.readable =lambda self: True
-        fileapi.writable =lambda self: False
-        fileapi.seekable =lambda self: True
+        fileapi=namedtuple('fileapi', ['read', 'read1', 'close', 'closed'])
+        fileapi.readable = lambda self: True
+        fileapi.writable = lambda self: False
+        fileapi.seekable = lambda self: False
         fileapi.flush = lambda self: 0 # Flush shouldn't be called for reads
-        with openfunc(fname, mode='rb') as f:
-            fa=fileapi(f.read, f.read, f.seek, f.close, f.closed)
+        with openfunc(fname, mode='rb') if sys.version_info[1]==7 and mode \
+                else closing(openfunc(fname, mode='rb')) if mode           \
+                else closing(openfunc(fname)) as f:
+            fa=fileapi(f.read, f.read, f.close, f.closed)
             with TextIOWrapper(fa, encoding=encoding) as t:
-                yield t
-    else:
-        with openfunc(fname, mode='rb') if mode else openfunc(fname) as f:
-            f.read1=f.read
-            with TextIOWrapper(f, encoding=encoding) as t:
                 yield t
 
 @contextmanager            
@@ -234,15 +241,18 @@ def _eopen(fname, encoding=None):
     TODO: use _getNewlineReadable to support encoding
     '''
 
+    encoding=encoding or sys.getdefaultencoding()
+    encoding='utf-8' if encoding=='ascii' else encoding
+
     if re.search('^[a-z+]+[:][/]{2}', fname):
-        with closing(urlopen(fname)) as f:
+        with _wrappedopen(urlopen, fname, encoding, mode=False) as f:
             yield f
     else:
         ext = os.path.splitext(fname)[1]
         if ext in ['.gz', '.gzip']:
             openfunc=gzip.open
         elif ext in ['.bz2', ]:
-            openfunc=bz2.BZ2File
+            openfunc=bz2.BZ2File if not PY3 or sys.version_info.minor<3 else bz2.open
         elif ext in ['.xz', ]:
             try:
                 import lzma
@@ -258,6 +268,7 @@ def _eopen(fname, encoding=None):
         if not encoding and os.path.splitext(fname) in ['.rb', 'py']:
             with _wrappedopen(openfunc, fname, encoding) as f:
                 encoding=head(tokens=f, n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
+
 
         #print('Opening file %s with encoding %s' % (fname, encoding))
         with _wrappedopen(openfunc, fname, encoding) as f:
@@ -1096,8 +1107,9 @@ def bzread(fname=None, encoding=None, tokens=None):
     :param tokens: list of filenames
     """
     files=_wrapInIterable(fname) if fname else tokens
+    openfunc=bz2.BZ2File if not PY3 or sys.version_info.minor<3 else bz2.open
     for name in files:
-        with _wrappedopen(bz2.BZ2File, name, encoding=encoding) as lines:
+        with _wrappedopen(openfunc, name, encoding=encoding) as lines:
             for line in lines:
                 yield line
 
@@ -1110,12 +1122,11 @@ def gzread(fname=None, encoding=None, tokens=None):
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
     """
-    from gzip import open as gzopen
     files=_wrapInIterable(fname) if fname else tokens
     if files is None:  #pragma: nocover
         raise ValueError('No filename or stream supplied')
     for name in files:
-        with _wrappedopen(gzopen, name, encoding=encoding) as lines:
+        with _wrappedopen(gzip.open, name, encoding=encoding) as lines:
             for line in lines:
                 yield line
 
