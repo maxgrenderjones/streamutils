@@ -28,87 +28,6 @@ A few things to note as you read the documentation and source code for streamuti
     :param func: function to call
     :param tokens: a list of things
 
-.. py:function:: addkeys(keyfuncs, tokens=None)
-
-    Takes a ``dict`` of ``key: func`` and a stream of ``dict``s and sets the value of ``key`` to ``func(token)`` for each ``token`` in the stream
-
-    >>> from streamutils import *
-    >>> lines=[{'first': 'Jack', 'last': 'Bauer'}, {'first': 'Michelle', 'last': 'Dessler'}]
-    >>> for actor in addkeys({'initials': lambda x: x['first'][0]+x['last'][0]}, tokens=lines):
-    ...     print(actor['initials'])
-    JB
-    MD
-
-    :param keyfuncs: ``dict`` of ``key``: ``function``s
-    :param tokens: a stream of ``dict``s
-
-.. py:function:: aggfirst(keys=None, values=None, tokens=None)
-
-    Given a series of key, value items, returns a dict of the first value assigned to each key
-
-    >>> from streamutils import *
-    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggfirst()
-    >>> firsts == {'A': 2, 'B': 6, 'C': 20}
-    True
-
-    :param: keys `dict` keys for the values to aggregate on
-    :params: values `dict` keys for the values to be aggregated
-    :return: dict mapping each key to the first value corresponding to that key
-
-.. py:function:: agglast(keys=None, values=None, tokens=None)
-
-    Given a series of key, value items, returns a dict of the last value assigned to each key
-
-    >>> from streamutils import *
-    >>> lasts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | agglast()
-    >>> lasts == {'A': 3, 'B': 6, 'C': 30}
-    True
-
-    :return: dict mapping each key to the last value corresponding to that key
-
-.. py:function:: aggmean(keys=None, values=None, tokens=None)
-
-    If key is not set, given a series of key, value items, returns a dict of means, grouped by key
-    If keys is set, given a series of ``dict``s, returns the mean of the values grouped by
-    a tuple of the values corresponding to the keys
-
-    >>> from streamutils import *
-    >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggmean()
-    >>> means == {'A': 2.5, 'B': 6, 'C': 20}
-    True
-
-    >>> from streamutils import *
-    >>> means = head(tokens=[{'key': 1, 'value': 2}, {'key': 1, 'value': 4}, {'key': 2, 'value': 5}]) | aggmean('key', 'value')
-    >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
-    True
-
-    :param: keys `dict` keys for the values to aggregate on
-    :params: values `dict` keys for the values to be aggregated
-    :return: dict mapping each key to the sum of all the values corresponding to that key
-
-.. py:function:: aggsum(keys=None, values=None, tokens=None)
-
-    If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
-    
-    >>> from streamutils import *
-    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggsum()
-    >>> sums == {'A': 5, 'B': 6, 'C': 60}
-    True
-
-    If keys and values are set, given a series of dicts, return a dict of dicts of summed values, groupled by
-    a tuple of the indicated keys. 
-    
-    >>> from streamutils import *
-    >>> data=[]
-    >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
-    >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
-    >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
-    >>> sums = head(tokens=data) | aggsum(keys='Region', values=['Revenue', 'Cost'])
-    >>> sums == {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
-    True
-
-    :return: dict mapping each key to the sum of all the values corresponding to that key
-
 .. py:function:: asdict(key=None, names=None, tokens=None)
 
     Creates a dict or dict of dicts from the result of a stream
@@ -207,8 +126,8 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: convert(converters, defaults={}, tokens=None)
 
-    Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions.
-    If a ``ValueError`` is thrown, sets the field to the default for that field if supplied, otherwise reraises
+    Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions. 
+    If a ``ValueError`` is thrown, sets the field to the default for that field if supplied, otherwise reraises.
 
     >>> from streamutils import *
     >>> lines=['Alice in Wonderland 1951', 'Dumbo 1941']
@@ -302,6 +221,19 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a list of things
     :return: The first item in the stream
 
+.. py:function:: firstby(keys=None, values=None, tokens=None)
+
+    Given a series of key, value items, returns a dict of the first value assigned to each key
+
+    >>> from streamutils import *
+    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | firstby()
+    >>> firsts == {'A': 2, 'B': 6, 'C': 20}
+    True
+
+    :param: keys `dict` keys for the values to aggregate on
+    :params: values `dict` keys for the values to be aggregated
+    :return: dict mapping each key to the first value corresponding to that key
+
 .. py:function:: fnmatches(pathpattern, matchcase=False, tokens=None)
 
     Filter tokens for strings that match the pathpattern using :py:func:`fnmatch.fnmatch` or :py:func:`fnmatch.fnmatchcase`.
@@ -382,6 +314,17 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: a list of things
     :return: The last item in the stream
 
+.. py:function:: lastby(keys=None, values=None, tokens=None)
+
+    Given a series of key, value items, returns a dict of the last value assigned to each key
+
+    >>> from streamutils import *
+    >>> lasts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | lastby()
+    >>> lasts == {'A': 3, 'B': 6, 'C': 30}
+    True
+
+    :return: dict mapping each key to the last value corresponding to that key
+
 .. py:function:: matches(pattern, match=False, flags=0, v=False, tokens=None)
 
     Filters the input for strings that match the pattern (think UNIX ``grep``)
@@ -396,6 +339,26 @@ A few things to note as you read the documentation and source code for streamuti
     :param flags: regexp flags
     :param v: if ``True``, return strings that don't match (think UNIX ``grep -v``) (default ``False``)
     :param tokens: strings to match
+
+.. py:function:: meanby(keys=None, values=None, tokens=None)
+
+    If key is not set, given a series of key, value items, returns a dict of means, grouped by key
+    If keys is set, given a series of ``dict``s, returns the mean of the values grouped by
+    a tuple of the values corresponding to the keys
+
+    >>> from streamutils import *
+    >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | meanby()
+    >>> means == {'A': 2.5, 'B': 6, 'C': 20}
+    True
+
+    >>> from streamutils import *
+    >>> means = head(tokens=[{'key': 1, 'value': 2}, {'key': 1, 'value': 4}, {'key': 2, 'value': 5}]) | meanby('key', 'value')
+    >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
+    True
+
+    :param: keys `dict` keys for the values to aggregate on
+    :params: values `dict` keys for the values to be aggregated
+    :return: dict mapping each key to the sum of all the values corresponding to that key
 
 .. py:function:: nlargest(n, key=None, tokens=None)
 
@@ -530,15 +493,18 @@ A few things to note as you read the documentation and source code for streamuti
     :param pattern: New-style python formatting pattern (see :py:func:`str.format`)
     :param tokens: list of lists of fomatting arguments or list of mappings
 
-.. py:function:: smap(transformation, tokens=None)
+.. py:function:: smap(*funcs, **kwargs)
 
-    Applies a transformation function to each element of the stream
+    Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields f(g(token))`
 
     >>> from streamutils import *
-    >>> smap(lambda x: x.upper(), ['aeiou']) | write()
+    >>> smap(str.upper, tokens=['aeiou']) | write()
     AEIOU
+    >>> smap(str.upper, str.strip, str.lower, tokens=[' hello ', ' world ']) | write()
+    HELLO
+    WORLD
 
-    :param transformation: function to apply
+    :param *funcs: functions to apply
     :param tokens: list/iterable of objects
 
 .. py:function:: smax(key=None, tokens=None)
@@ -647,6 +613,29 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param tokens: A series of lines to remove whitespace from
 
+.. py:function:: sumby(keys=None, values=None, tokens=None)
+
+    If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
+    
+    >>> from streamutils import *
+    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | sumby()
+    >>> sums == {'A': 5, 'B': 6, 'C': 60}
+    True
+
+    If keys and values are set, given a series of dicts, return a dict of dicts of summed values, grouped by
+    a tuple of the indicated keys. 
+    
+    >>> from streamutils import *
+    >>> data=[]
+    >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
+    >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
+    >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
+    >>> sums = head(tokens=data) | sumby(keys='Region', values=['Revenue', 'Cost'])
+    >>> sums == {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
+    True
+
+    :return: dict mapping each key to the sum of all the values corresponding to that key
+
 .. py:function:: tail(n=10, fname=None, encoding=None, tokens=None)
 
     Returns a list of the last ``n`` items in the stream
@@ -680,6 +669,28 @@ A few things to note as you read the documentation and source code for streamuti
     three
 
     :param tokens: Either set by the pipeline or provided as an initial list of items to pass through the pipeline
+
+.. py:function:: update(values=None, funcs=None, tokens=None)
+
+    For each ``dict`` token in the stream, updates it with a ``values`` ``dict``, then updates it with ``funcs``, a ``dict`` mapping of ``key`` to ``func``
+    which it uses to set the value of ``key`` to ``func(token)``. A bit like ``convert``, only it's designed to let you add keys, not just modify existing ones.
+    Currently modifies the ``dict``s in the stream (i.e. not pure), but this should not be relied on - in the future it may yield (shallow) copied ``dict``s in
+    order to be pure (at a cost of more allocations)
+
+    >>> from streamutils import *
+    >>> lines=[{'first': 'Jack', 'last': 'Bauer'}, {'first': 'Michelle', 'last': 'Dessler'}]
+    >>> for actor in update(funcs={'initials': lambda x: x['first'][0]+x['last'][0]}, tokens=lines):
+    ...     print(actor['initials'])
+    JB
+    MD
+    >>> for actor in update(values={'Show': '24'}, tokens=lines):
+    ...     print(actor['Show'])
+    24
+    24
+
+    :param values: ``dict`` 
+    :param funcs: ``dict`` of ``key``: ``function``s
+    :param tokens: a stream of ``dict``s
 
 .. py:function:: words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None)
 

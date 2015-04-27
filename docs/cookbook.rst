@@ -36,7 +36,7 @@ Or suppose we want to know how much data a known user has used
 .. doctest::
 
    >>> logpattern2=r'''^([\w.-]+).*(\d+)'''  
-   >>> usage = find('examples/*log.bz2') | read() | search(logpattern2, names={1: 'User', 2: 'Data'}) | convert({'Data': int}) | aggsum(keys='User', values='Data')
+   >>> usage = find('examples/*log.bz2') | read() | search(logpattern2, names={1: 'User', 2: 'Data'}) | convert({'Data': int}) | sumby(keys='User', values='Data')
    >>> usage['kristina.az.com']['Data']
    517
 

@@ -84,8 +84,14 @@ Features
 --------
 
 -   Lazy evaluation and therefore memory efficient - nothing happens until you start reading from the output of your pipeline, when each of the functions runs for just long enough to yield the next token in the stream (so you can use a pipeline on a big file without needing to have enough space to store the whole thing in memory)
--   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `filter`, whole-line transformations with `smap` or partial transformations with `convert`)
+-   Extensible - to use your own functions in a pipeline, just decorate them, or use the built in functions that do the groundwork for the most obvious things you might want to do (i.e. custom filtering with `sfilter`, whole-line transformations with `smap` or partial transformations with `convert`)
 -   Unicode-aware: all functions that read from files or file-like things take an `encoding` parameter
+-   Not why I wrote the library at all, but come to think of it, many of `streamutils` functions are 'pure' in the functional sense, so if you squint your eyes, you might be able to think of this as a way into functional programming, with a much nicer (if less pythonic) syntax than say [toolz](https://github.com/pytoolz/toolz)
+
+Non-features
+------------
+
+An unspoken element of the zen of python (`import this`) is 'Fast to develop' is better than 'Fast to run', and if there's a downside to `streamutils` that's it. The actual bash versions of `grep` etc are no doubt much faster than `search`/`match` from `streamutils`. But then you can't call python functions from them, or call them from python code on your windows machine. As they say, 'you pays your money and you take your choice'. That said, I'd be curious to discover if `streamutils` could get a material speedup from either `numba` (where it would get the benefits for 'free') or `cython` (as per `cytoolz`).
 
 Functions
 ---------
@@ -125,8 +131,8 @@ Implemented:
 -   `count`, `bag`, `sort`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
 -	`csvwrite`: to write to a csv file
--	`aggsum`, `aggmean`, `aggfirst`, `agglast`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
--	`addkeys`: that takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
+-	`sumby`, `meanby`, `firstby`, `lastby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
+-	`update`: that updates a stream of `dicts` with another `dict`, or takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
 - 	`sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream

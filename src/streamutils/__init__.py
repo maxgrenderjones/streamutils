@@ -699,16 +699,16 @@ def ssum(start=0, tokens=None):
     return sum(tokens, start)
 
 @wrapTerminator
-def aggsum(keys=None, values=None, tokens=None):
+def sumby(keys=None, values=None, tokens=None):
     """
     If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
     
     >>> from streamutils import *
-    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggsum()
+    >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | sumby()
     >>> sums == {'A': 5, 'B': 6, 'C': 60}
     True
 
-    If keys and values are set, given a series of dicts, return a dict of dicts of summed values, groupled by
+    If keys and values are set, given a series of dicts, return a dict of dicts of summed values, grouped by
     a tuple of the indicated keys. 
     
     >>> from streamutils import *
@@ -716,7 +716,7 @@ def aggsum(keys=None, values=None, tokens=None):
     >>> data.append({'Region': 'North', 'Revenue': 4, 'Cost': 8})
     >>> data.append({'Region': 'North', 'Revenue': 3, 'Cost': 2})
     >>> data.append({'Region': 'West', 'Revenue': 6, 'Cost': 3})
-    >>> sums = head(tokens=data) | aggsum(keys='Region', values=['Revenue', 'Cost'])
+    >>> sums = head(tokens=data) | sumby(keys='Region', values=['Revenue', 'Cost'])
     >>> sums == {'North': {'Revenue': 7, 'Cost': 10}, 'West': {'Revenue': 6, 'Cost': 3}}
     True
 
@@ -734,19 +734,19 @@ def aggsum(keys=None, values=None, tokens=None):
     return result
 
 @wrapTerminator
-def aggmean(keys=None, values=None, tokens=None):
+def meanby(keys=None, values=None, tokens=None):
     """
     If key is not set, given a series of key, value items, returns a dict of means, grouped by key
     If keys is set, given a series of ``dict``s, returns the mean of the values grouped by
     a tuple of the values corresponding to the keys
 
     >>> from streamutils import *
-    >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggmean()
+    >>> means = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | meanby()
     >>> means == {'A': 2.5, 'B': 6, 'C': 20}
     True
 
     >>> from streamutils import *
-    >>> means = head(tokens=[{'key': 1, 'value': 2}, {'key': 1, 'value': 4}, {'key': 2, 'value': 5}]) | aggmean('key', 'value')
+    >>> means = head(tokens=[{'key': 1, 'value': 2}, {'key': 1, 'value': 4}, {'key': 2, 'value': 5}]) | meanby('key', 'value')
     >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
     True
 
@@ -771,12 +771,12 @@ def aggmean(keys=None, values=None, tokens=None):
         return dict((key, totals[key]/counts[key]) for key in counts)
 
 @wrapTerminator
-def aggfirst(keys=None, values=None, tokens=None):
+def firstby(keys=None, values=None, tokens=None):
     """
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
     >>> from streamutils import *
-    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | aggfirst()
+    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | firstby()
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
@@ -798,12 +798,12 @@ def aggfirst(keys=None, values=None, tokens=None):
     return result
 
 @wrapTerminator
-def agglast(keys=None, values=None, tokens=None):
+def lastby(keys=None, values=None, tokens=None):
     """
     Given a series of key, value items, returns a dict of the last value assigned to each key
 
     >>> from streamutils import *
-    >>> lasts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | agglast()
+    >>> lasts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | lastby()
     >>> lasts == {'A': 3, 'B': 6, 'C': 30}
     True
 
@@ -1393,31 +1393,42 @@ def join(sep=None, tokens=None):
         yield sep.join(line)
 
 @wrap
-def addkeys(keyfuncs, tokens=None):
+def update(values=None, funcs=None, tokens=None):
     """
-    Takes a ``dict`` of ``key: func`` and a stream of ``dict``s and sets the value of ``key`` to ``func(token)`` for each ``token`` in the stream
+    For each ``dict`` token in the stream, updates it with a ``values`` ``dict``, then updates it with ``funcs``, a ``dict`` mapping of ``key`` to ``func``
+    which it uses to set the value of ``key`` to ``func(token)``. A bit like ``convert``, only it's designed to let you add keys, not just modify existing ones.
+    Currently modifies the ``dict``s in the stream (i.e. not pure), but this should not be relied on - in the future it may yield (shallow) copied ``dict``s in
+    order to be pure (at a cost of more allocations)
 
     >>> from streamutils import *
     >>> lines=[{'first': 'Jack', 'last': 'Bauer'}, {'first': 'Michelle', 'last': 'Dessler'}]
-    >>> for actor in addkeys({'initials': lambda x: x['first'][0]+x['last'][0]}, tokens=lines):
+    >>> for actor in update(funcs={'initials': lambda x: x['first'][0]+x['last'][0]}, tokens=lines):
     ...     print(actor['initials'])
     JB
     MD
+    >>> for actor in update(values={'Show': '24'}, tokens=lines):
+    ...     print(actor['Show'])
+    24
+    24
 
-    :param keyfuncs: ``dict`` of ``key``: ``function``s
+    :param values: ``dict`` 
+    :param funcs: ``dict`` of ``key``: ``function``s
     :param tokens: a stream of ``dict``s
 
     """
     for d in tokens:
-        for key, func in keyfuncs.items():
-            d[key]=func(d)
+        if values:
+            d.update(values)
+        if funcs:
+            for key, func in funcs.items():
+                d[key]=func(d)
         yield d
 
 @wrap
 def convert(converters, defaults={}, tokens=None):
     """
-    Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions.
-    If a ``ValueError`` is thrown, sets the field to the default for that field if supplied, otherwise reraises
+    Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions. 
+    If a ``ValueError`` is thrown, sets the field to the default for that field if supplied, otherwise reraises.
 
     >>> from streamutils import *
     >>> lines=['Alice in Wonderland 1951', 'Dumbo 1941']
@@ -1466,18 +1477,21 @@ def convert(converters, defaults={}, tokens=None):
         yield line
 
 @wrap
-def smap(transformation, tokens=None):
+def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=None), but 2.x won't
     """
-    Applies a transformation function to each element of the stream
+    Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields f(g(token))`
 
     >>> from streamutils import *
-    >>> smap(lambda x: x.upper(), ['aeiou']) | write()
+    >>> smap(str.upper, tokens=['aeiou']) | write()
     AEIOU
+    >>> smap(str.upper, str.strip, str.lower, tokens=[' hello ', ' world ']) | write()
+    HELLO
+    WORLD
 
-    :param transformation: function to apply
+    :param *funcs: functions to apply
     :param tokens: list/iterable of objects
     """
-    return map(transformation, tokens)
+    return map(reduce(lambda f, g: lambda x: f(g(x)), funcs), kwargs['tokens'])
 
 @wrap
 def strip(chars=None, tokens=None):
