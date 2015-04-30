@@ -36,7 +36,28 @@ You don't have to take your input from a file or some other `streamutils` source
 >>> from streamutils import *
 >>> [1, 2, 3, 4] | takewhile(lambda x: x<3) | aslist()
 [1, 2]
+>>> range(0,1001) | su.sfilterfalse(lambda x: (x%5) * (x%3)) | su.ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
+233168
+>>> def fib(): 
+...		fibs={0:1, 1:1}
+...    	def fibn(n):
+...     	return fibs[n] if n in fibs else fibs.setdefault(n, fibn(n-1)+fibn(n-2))
+...    	n=0
+...    	while True:
+...     	yield fibn(n)
+...     	n+=1
+...
+>>> fib() | su.takewhile(lambda x: x<4000000) | su.sfilterfalse(lambda x: x%2) | su.ssum() # Euler 2: sum of even fibonacci numbers under four million
+4613732
+>>> (range(0, 101) | su.ssum())**2 - (range(0,101) | su.smap(lambda x: x*x) | su.ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
+25164150
+>>> for p in range(2,int(top**0.5)): # Euler 7: Sieve of Eratosthenes
+...     primes|=su.sfilter(lambda x: (x==p) or (x%p), end=True)
+...
+>>> primes|=su.nth(10001)
+104743
 ```
+
 
 streamutils also mimics the `>` and `>>` operators of bash-like shells, so to write to files you can write something like:
 
