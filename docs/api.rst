@@ -809,25 +809,26 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
     :raise: ``ValueError`` if there are less than n (or max(n)) words in the string
 
-.. py:function:: write(fname=None, encoding=None, tokens=None)
+.. py:function:: write(fname=None, mode='wt', encoding=None, tokens=None)
 
     Writes the output of the stream to a file, or via ``print`` if no file is supplied. Calls to ``print`` include
-    a call to :py:func:`str.rstrip` to remove trailing newlines
+    a call to :py:func:`str.rstrip` to remove trailing newlines. ``mode`` is only used if ``fname`` is a string
 
     >>> from streamutils import *
     >>> from six import StringIO
     >>> lines=['%s\n' % line for line in ['Three', 'Blind', 'Mice']]
-    >>> head(tokens=lines) | write() # By default prints to the console
+    >>> lines | head() | write() # By default prints to the console
     Three
     Blind
     Mice
     >>> buffer = StringIO() # Alternatively write to an open filelike object
-    >>> head(tokens=lines) | write(fname=buffer)
+    >>> lines | head() | write(fname=buffer)
     >>> writtenlines=buffer.getvalue().splitlines()
     >>> writtenlines[0]=='Three'
     True
 
     :param fname: If `str`, filename to write to, otherwise open file-like object to write to. Default of `None` implies
                     write to standard output
+    :param mode: The mode to use to open ``fname`` (default of 'wt' as per :py:func:`io.open`)
     :param encoding: Encoding to use to write to the file
     :param tokens: Lines to write to the file

@@ -140,28 +140,10 @@ class ConnectingGenerator(Iterable):
             return self
 
     def __gt__(self, other):
-        if isinstance(other, string_types) or isinstance(other, integer_types):
-            with open(other, mode='w') as w:
-                w.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
-        elif hasattr(other, 'writelines'):
-            other.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
-        elif hasattr(other, 'write'):
-            for line in self:
-                other.write(line)
-        else:  #pragma: nocover
-            raise TypeError('Got %s: Can only write to filenames/file descriptors or file-like things with a write or writelines method' % other)
-
+        return self | smap(lambda x: x if x.endswith('\n') else x+'\n') | write(other, mode='wt') # without \n, no newline is added to the end of each token
+        
     def __rshift__(self, other):
-        if isinstance(other, string_types) or isinstance(other, integer_types):
-            with open(other, mode='a') as w:
-                w.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
-        elif hasattr(other, 'writelines'):
-            other.writelines((line if line.endswith('\n') else '%s%s' % (line, '\n') for line in self))
-        elif hasattr(other, 'write'):
-            for line in self:
-                other.write(line)
-        else:  #pragma: nocover
-            raise TypeError('Got %s: Can only write to filenames/file descriptors or file-like things with a write or writelines method' % other)
+        return self | smap(lambda x: x if x.endswith('\n') else x+'\n') | write(other, mode='at') # without \n, no newline is added to the end of each token
 
     def __getattr__(self, name):
         return getattr(self.func, name)
@@ -869,10 +851,10 @@ def sreduce(func, initial=None, tokens=None):
     return reduce(func, tokens, initial)
 
 @wrapTerminator
-def write(fname=None, encoding=None, tokens=None):
+def write(fname=None, mode='wt', encoding=None, tokens=None):
     r"""
     Writes the output of the stream to a file, or via ``print`` if no file is supplied. Calls to ``print`` include
-    a call to :py:func:`str.rstrip` to remove trailing newlines
+    a call to :py:func:`str.rstrip` to remove trailing newlines. ``mode`` is only used if ``fname`` is a string
 
     >>> from streamutils import *
     >>> from six import StringIO
@@ -889,19 +871,23 @@ def write(fname=None, encoding=None, tokens=None):
 
     :param fname: If `str`, filename to write to, otherwise open file-like object to write to. Default of `None` implies
                     write to standard output
+    :param mode: The mode to use to open ``fname`` (default of 'wt' as per :py:func:`io.open`)
     :param encoding: Encoding to use to write to the file
     :param tokens: Lines to write to the file
     """
-    if tokens:
-        if not fname:
-            for line in tokens:
-                print(line.rstrip() if isinstance(line, string_types) else line)
-        elif isinstance(fname, string_types):
-            with open(fname, encoding=encoding, mode='wt') as f:
-                f.writelines(tokens)
-        else:
-            for line in tokens:
-                fname.write(line)
+    if not fname:
+        for line in tokens:
+            print(line.rstrip() if isinstance(line, string_types) else line)
+    elif isinstance(fname, string_types):
+        with open(fname, encoding=encoding, mode=mode) as f:
+            f.writelines(tokens)
+    elif hasattr(fname, 'writelines'):
+        fname.writelines(tokens)
+    elif hasattr(fname, 'write'):
+        for line in tokens:
+            fname.write(line)
+    else:
+        raise TypeError('fname must be a filename or a file-like thing, got %s which is a %s' % (fname, type(fname)))
 
 @wrap
 def unique(tokens=None):
