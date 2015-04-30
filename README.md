@@ -33,31 +33,29 @@ johndoe 1000
 
 You don't have to take your input from a file or some other `streamutils` source, as it's easy to pass in an `Iterable` that you've created elsewhere: 
 ```python
+>>> import itertools
 >>> from streamutils import *
->>> [1, 2, 3, 4] | takewhile(lambda x: x<3) | aslist()
-[1, 2]
->>> range(0,1001) | su.sfilterfalse(lambda x: (x%5) * (x%3)) | su.ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
+>>> range(0,1000) | sfilterfalse(lambda x: (x%5) * (x%3)) | ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
 233168
 >>> def fib(): 
 ...		fibs={0:1, 1:1}
 ...    	def fibn(n):
 ...     	return fibs[n] if n in fibs else fibs.setdefault(n, fibn(n-1)+fibn(n-2))
-...    	n=0
-...    	while True:
-...     	yield fibn(n)
-...     	n+=1
+...    	for f in itertools.count(0) | smap(fibn):
+...			yield f
 ...
->>> fib() | su.takewhile(lambda x: x<4000000) | su.sfilterfalse(lambda x: x%2) | su.ssum() # Euler 2: sum of even fibonacci numbers under four million
+>>> fib() | takewhile(lambda x: x<4000000) | sfilterfalse(lambda x: x%2) | ssum() # Euler 2: sum of even fibonacci numbers under four million
 4613732
->>> (range(0, 101) | su.ssum())**2 - (range(0,101) | su.smap(lambda x: x*x) | su.ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
+>>> (range(0, 101) | ssum())**2 - (range(0,101) | smap(lambda x: x*x) | ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
 25164150
+>>> top = 110000
+>>> primes=range(2,top)
 >>> for p in range(2,int(top**0.5)): # Euler 7: Sieve of Eratosthenes
-...     primes|=su.sfilter(lambda x: (x==p) or (x%p), end=True)
+...     primes|=sfilter(lambda x: (x==p) or (x%p), end=True)
 ...
->>> primes|=su.nth(10001)
+>>> primes|nth(10001)
 104743
 ```
-
 
 streamutils also mimics the `>` and `>>` operators of bash-like shells, so to write to files you can write something like:
 
