@@ -40,7 +40,8 @@ nosetests.xml
 .idea
 
 # Binaries
-.*.tar.gz
+*.tar.gz
 
 # Sync cruft
 .sync
+tar.gz

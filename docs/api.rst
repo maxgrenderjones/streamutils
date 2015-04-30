@@ -199,6 +199,16 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: encoding to use to write the file
     :param names: the keys to use in the DictWriter
 
+.. py:function:: dropwhile(func=None, tokens=None)
+
+    Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.dropwhile`)
+
+	>>> dropwhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	[3, 2, 1]
+
+	:param func: The function to use as a predicate
+	:param tokens: List of things to filter
+
 .. py:function:: find(pathpattern=None, tokens=None)
 
     Searches for files the match a given pattern. For example
@@ -448,7 +458,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: Encoding to use to parse the output. Defaults to the default locale, or utf-8 if there isn't one
     :param tokens: Lines to pass into the command as standard in
 
-.. py:function:: sfilter(filterfunction=None, tokens=None)
+.. py:function:: sfilter(func=None, tokens=None)
 
     Take a user-defined function and passes through the tokens for which the function returns something that is True
     in a conditional context. If no function is supplied, passes through the True items. (Equivalent of :py:func:`filter`)
@@ -465,7 +475,7 @@ A few things to note as you read the documentation and source code for streamuti
     :param filterfunction: function to use in the filter
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
 
-.. py:function:: sfilterfalse(filterfunction=None, tokens=None)
+.. py:function:: sfilterfalse(func=None, tokens=None)
 
     Passes through items for which the output of the filter function is False in a boolean context
 
@@ -656,6 +666,16 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: The enocding of the file
     :param tokens: Stream of tokens to take the last few members of (i.e. not a list of filenames to take the last few lines of)
     :return: A list of the last ``n`` items
+
+.. py:function:: takewhile(func=None, tokens=None)
+
+    Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.takewhile`)
+
+	>>> takewhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	[1, 2]
+
+	:param func: The function to use as a predicate
+	:param tokens: List of things to filter
 
 .. py:function:: unique(tokens=None)
 

@@ -143,11 +143,13 @@ take your choice'. That said, I'd be curious to discover if
 Functions
 ---------
 
-A quick bit of terminology: - **pipeline**: A series of streamutil
-functions joined together with pipes (i.e. ``|``) - **tokens**: things
-being passed through the pipeline - **stream**: the underlying data
-which is being broken into the tokens that are passed through the
-pipeline
+A quick bit of terminology:
+
+-  **pipeline**: A series of streamutil functions joined together with
+   pipes (i.e. ``|``)
+-  **tokens**: things being passed through the pipeline
+-  **stream**: the underlying data which is being broken into the tokens
+   that are passed through the pipeline
 
 Implemented so far (equivalent ``coreutils`` function in brackets if the
 name is different). Note that the following descriptions say 'lines',
@@ -190,6 +192,10 @@ Implemented:
    conditional context
 -  ``unique`` to: only return lines that haven't been seen already
    (``uniq``)
+-  ``update``: that updates a stream of ``dicts`` with another ``dict``,
+   or takes a ``dict`` of ``key``, ``func`` mappings and calls the
+   ``func`` against each ``dict`` in the stream to get a value to assign
+   to each ``key``
 -  ``smap``, ``convert`` to: take user-defined function and use it to
    ``map`` each line; take a ``list`` or ``dict`` (e.g. the output of
    ``search``) and call a user defined function on each element (e.g. to
@@ -224,10 +230,6 @@ Implemented:
 -  ``sumby``, ``meanby``, ``firstby``, ``lastby``: to aggregate by a key
    or keys, and then sum / take the mean / take the first / take the
    last
--  ``update``: that updates a stream of ``dicts`` with another ``dict``,
-   or takes a ``dict`` of ``key``, ``func`` mappings and calls the
-   ``func`` against each ``dict`` in the stream to get a value to assign
-   to each ``key``
 -  ``sreduce``: to do a pythonic ``reduce`` on the stream
 -  ``action``: for every token, call a user-defined function
 -  ``smax``, ``smin`` to: return the maximum or minimum element in the
@@ -309,10 +311,11 @@ Installation and Dependencies
 -----------------------------
 
 ``streamutils`` supports python >=2.6 (on 2.6 it needs the
-``OrderedDict`` and ``Counter`` backports), pypy and python >=3 by using
-the `six <https://pythonhosted.org/six/>`__ library (note that >=1.4.1
-is required). For now, the easiest way to install it is to pull the
-latest version direct from github by running:
+``OrderedDict`` and ``Counter`` backports, on <3.3 it can use the
+``lzma`` backport), pypy and python >=3 by using the
+`six <https://pythonhosted.org/six/>`__ library (note that >=1.4.1 is
+required). For now, the easiest way to install it is to pull the latest
+version direct from github by running:
 
 ::
 
@@ -448,6 +451,20 @@ Contribute
 -  API documentation: http://streamutils.readthedocs.org/
 -  Continuous integration: |Build Status|
 -  Test coverage: |Coverage Status|
+
+Alternatives and Prior art
+--------------------------
+
+Various other projects either abuse the ``|`` operator or try to make it
+easy to compose functions with iterators, none of which seem as natural
+to me (but have syntax much closer to functional programming), so ymmv:
+
+-  `Pipe <https://github.com/JulienPalard/Pipe>`__ - probably the
+   closest to ``streamutils``, but less focussed on file/text processing
+-  `toolz <https://github.com/pytoolz/toolz>`__
+-  `Rich Iterator
+   Wrapper <https://code.activestate.com/recipes/498272-rich-iterator-wrapper/?in=user-2591466>`__
+-  `fn.py <https://github.com/kachayev/fn.py>`__
 
 Acknowledgements and References
 -------------------------------

@@ -96,6 +96,7 @@ An unspoken element of the zen of python (`import this`) is 'Fast to develop' is
 Functions
 ---------
 A quick bit of terminology:
+
 - **pipeline**: A series of streamutil functions joined together with pipes (i.e. `|`)
 - **tokens**: things being passed through the pipeline
 - **stream**: the underlying data which is being broken into the tokens that are passed through the pipeline
@@ -115,7 +116,9 @@ Implemented:
 -   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `words`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If no function is given, it returns the items that are `True` (or `False`) in a conditional context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
+-	`update`: that updates a stream of `dicts` with another `dict`, or takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
 -   `smap`, `convert` to: take user-defined function and use it to `map` each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
+-	`takewhile`, `dropwhile` to: yield elements while a predicate is `True`; drop elements until a predicate is `True`
 
 Not yet implemented:
 
@@ -132,7 +135,6 @@ Implemented:
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
 -	`csvwrite`: to write to a csv file
 -	`sumby`, `meanby`, `firstby`, `lastby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
--	`update`: that updates a stream of `dicts` with another `dict`, or takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
 - 	`sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream
@@ -159,7 +161,7 @@ I would be open to creating a `coreutils` (or similarly named) subpackage, which
 Installation and Dependencies
 -----------------------------
 
-`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). For now, the easiest way to install it is to pull the latest version direct from github by running:
+`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports, on <3.3 it can use the `lzma` backport), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). For now, the easiest way to install it is to pull the latest version direct from github by running:
 
 	pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
 
@@ -226,6 +228,15 @@ Contribute
 - API documentation: http://streamutils.readthedocs.org/
 - Continuous integration: [![Build Status](https://travis-ci.org/maxgrenderjones/streamutils.png "Build status at Travis-CI")](https://travis-ci.org/maxgrenderjones/streamutils/)
 - Test coverage: [![Coverage Status](http://coveralls.io/repos/maxgrenderjones/streamutils/badge.png?branch=master "Coverage status at Coveralls")](https://coveralls.io/r/maxgrenderjones/streamutils)
+
+Alternatives and Prior art
+--------------------------
+Various other projects either abuse the `|` operator or try to make it easy to compose functions with iterators, none of which seem as natural to me (but some have syntax much closer to functional programming), so ymmv:
+
+ - [Pipe](https://github.com/JulienPalard/Pipe) - probably the closest to `streamutils`, but less focussed on file/text processing
+ - [toolz](https://github.com/pytoolz/toolz)
+ - [Rich Iterator Wrapper](https://code.activestate.com/recipes/498272-rich-iterator-wrapper/?in=user-2591466)
+ - [fn.py](https://github.com/kachayev/fn.py)
 
 Acknowledgements and References
 -------------------------------

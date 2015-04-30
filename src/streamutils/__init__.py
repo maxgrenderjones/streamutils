@@ -46,8 +46,7 @@ try:
 except ImportError: # pragma: no cover
     from ordereddict import OrderedDict #To use OrderedDict backport
     from counter import Counter         #To use Counter backport
-from itertools import chain, islice
-from itertools import count as icount
+from itertools import chain, islice, count as icount, takewhile as itakewhile, dropwhile as idropwhile
 from functools import update_wrapper
 
 from .version import __version__
@@ -1508,7 +1507,7 @@ def strip(chars=None, tokens=None):
     return map(lambda x: x.strip(chars), tokens)
 
 @wrap
-def sfilter(filterfunction=None, tokens=None):
+def sfilter(func=None, tokens=None):
     """
 
     Take a user-defined function and passes through the tokens for which the function returns something that is True
@@ -1526,10 +1525,10 @@ def sfilter(filterfunction=None, tokens=None):
     :param filterfunction: function to use in the filter
     :param tokens: list of tokens to iterate through in the function (usually supplied by the previous function in the pipeline)
     """
-    return filter(filterfunction, tokens)
+    return filter(func, tokens)
 
 @wrap
-def sfilterfalse(filterfunction=None, tokens=None):
+def sfilterfalse(func=None, tokens=None):
     """
     Passes through items for which the output of the filter function is False in a boolean context
 
@@ -1540,7 +1539,33 @@ def sfilterfalse(filterfunction=None, tokens=None):
     :param filterfunction: Function to use for filtering
     :param tokens: List of things to filter
     """
-    return filterfalse(filterfunction, tokens)
+    return filterfalse(func, tokens)
+
+@wrap
+def takewhile(func=None, tokens=None):
+	"""
+	Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.takewhile`)
+
+	>>> takewhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	[1, 2]
+
+	:param func: The function to use as a predicate
+	:param tokens: List of things to filter
+	"""
+	return itakewhile(func, tokens)
+
+@wrap
+def dropwhile(func=None, tokens=None):
+	"""
+	Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.dropwhile`)
+
+	>>> dropwhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	[3, 2, 1]
+
+	:param func: The function to use as a predicate
+	:param tokens: List of things to filter
+	"""
+	return idropwhile(func, tokens)
 
 @wrap
 def sformat(pattern, tokens=None):
