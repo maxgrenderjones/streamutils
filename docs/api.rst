@@ -124,6 +124,24 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
 
+.. py:function:: combine(func=None, tokens=None)
+
+    Given a stream, combines the tokens together into a `list`. If `func` is not `None`, the `tokens` are combined 
+    into a series of `list`s, chopping the `list` every time `func` returns True
+
+    >>> ["1 2 3", "4 5 6"] | words() | separate() | smap(lambda x: int(x)+1) | combine() | write()
+    [2, 3, 4, 5, 6, 7]
+    >>> ["first", "line\n", "second", "line\n", "third line\n"] | combine(lambda x: x.endswith('\n')) | join(' ') | write()
+    first line
+    second line
+    third line
+    
+    Note that `separate` followed by `combine` is not a no-op.
+    >>> [["hello", "small"], ["world"]] | separate() | combine() | join() | write()
+    hello small world
+
+    :param tokens: a stream of things
+
 .. py:function:: convert(converters, defaults={}, tokens=None)
 
     Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions. 
@@ -203,7 +221,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.dropwhile`)
 
-	>>> dropwhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	>>> [1,2,3,2,1] | dropwhile(lambda x: x<3) | aslist()
 	[3, 2, 1]
 
 	:param func: The function to use as a predicate
@@ -307,14 +325,14 @@ A few things to note as you read the documentation and source code for streamuti
     :param encoding: Encoding of file to open. If None, will try to guess the encoding based on coding= strings
     :param tokens: Stream of tokens to take the first few members of (i.e. not a list of filenames to take the first few lines of)
 
-.. py:function:: join(sep=None, tokens=None)
+.. py:function:: join(sep=' ', tokens=None)
 
-    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`)
+    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`). Defaults to joining with a space
 
     >>> split(sep=',', n=[1,4], tokens=['flopsy,mopsy,cottontail,peter']) | join(',') | write()
     flopsy,peter
 
-    :param sep: string separator to use to join each line in the stream
+    :param sep: string separator to use to join each line in the stream (default ' ')
 
 .. py:function:: last(default=None, tokens=None,)
 
@@ -457,6 +475,19 @@ A few things to note as you read the documentation and source code for streamuti
     :param env: Environment to pass into command
     :param encoding: Encoding to use to parse the output. Defaults to the default locale, or utf-8 if there isn't one
     :param tokens: Lines to pass into the command as standard in
+
+.. py:function:: separate(tokens=None)
+
+    Takes a stream of `Iterable`s, and yields items from the iterables 
+
+    >>> [["hello", "there"], ["how", "are"], ["you"]] | separate() | write()
+    hello
+    there
+    how
+    are
+    you
+
+    :param tokens: a stream of Iterables
 
 .. py:function:: sfilter(func=None, tokens=None)
 
@@ -671,11 +702,18 @@ A few things to note as you read the documentation and source code for streamuti
 
     Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.takewhile`)
 
-	>>> takewhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	>>> [1,2,3,2,1] | takewhile(lambda x: x<3) | aslist()
 	[1, 2]
 
 	:param func: The function to use as a predicate
 	:param tokens: List of things to filter
+
+.. py:function:: traverse(tokens=None)
+
+    Performs a full depth-first unwrapping of the supplied tokens. Strings are **not** unwrapped
+    >>> ["hello", ["hello", [["world"]]]] | traverse() | join() | write()
+    hello
+    hello world
 
 .. py:function:: unique(tokens=None)
 
@@ -689,6 +727,17 @@ A few things to note as you read the documentation and source code for streamuti
     three
 
     :param tokens: Either set by the pipeline or provided as an initial list of items to pass through the pipeline
+
+.. py:function:: unwrap(tokens=None)
+
+    Yields a stream of `list`s, with one level of nesting in the tokens the stream unwrapped (if present).
+
+    >>> [[[1], [2]], [[2, 3, 4], [5]], [[[6]]]] | unwrap() | write()
+    [1, 2]
+    [2, 3, 4, 5]
+    [[6]]
+
+    :param tokens: a stream of Iterables
 
 .. py:function:: update(values=None, funcs=None, tokens=None)
 

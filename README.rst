@@ -49,6 +49,16 @@ above:
     >>> read('examples/passwd.xz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() 
     johndoe 1000
 
+You don't have to take your input from a file or some other
+``streamutils`` source, as it's easy to pass in an ``Iterable`` that
+you've created elsewhere:
+
+.. code:: python
+
+    >>> from streamutils import *
+    >>> [1, 2, 3, 4] | takewhile(lambda x: x<3) | aslist()
+    [1, 2]
+
 streamutils also mimics the ``>`` and ``>>`` operators of bash-like
 shells, so to write to files you can write something like:
 
@@ -200,8 +210,12 @@ Implemented:
    ``map`` each line; take a ``list`` or ``dict`` (e.g. the output of
    ``search``) and call a user defined function on each element (e.g. to
    call ``int`` on fields that should be integers)
+-  ``takewhile``, ``dropwhile`` to: yield elements while a predicate is
+   ``True``; drop elements until a predicate is ``True``
+-  ``unwrap``, 'traverse': to remove one level of nested lists; to do a
+   depth first search through supplied iterables
 
-Not yet implemented:
+Stream modifiers:
 
 -  ``separate``, ``combine``: to split the tokens in the stream so that
    the remainder of the stream receives sub-tokens; to combine subtokens
@@ -457,10 +471,12 @@ Alternatives and Prior art
 
 Various other projects either abuse the ``|`` operator or try to make it
 easy to compose functions with iterators, none of which seem as natural
-to me (but have syntax much closer to functional programming), so ymmv:
+to me (but some have syntax much closer to functional programming), so
+ymmv:
 
 -  `Pipe <https://github.com/JulienPalard/Pipe>`__ - probably the
-   closest to ``streamutils``, but less focussed on file/text processing
+   closest to ``streamutils``, but less focussed on file/text
+   processing, and has fewer batteries included
 -  `toolz <https://github.com/pytoolz/toolz>`__
 -  `Rich Iterator
    Wrapper <https://code.activestate.com/recipes/498272-rich-iterator-wrapper/?in=user-2591466>`__

@@ -46,7 +46,7 @@ try:
 except ImportError: # pragma: no cover
     from ordereddict import OrderedDict #To use OrderedDict backport
     from counter import Counter         #To use Counter backport
-from itertools import chain, islice, count as icount, takewhile as itakewhile, dropwhile as idropwhile
+from itertools import chain as ichain, islice, count as icount, takewhile as itakewhile, dropwhile as idropwhile, groupby as igroupby
 from functools import update_wrapper
 
 from .version import __version__
@@ -125,7 +125,7 @@ class ConnectingGenerator(Iterable):
 
     def __or__(self, other):
         if not (isinstance(other, ConnectingGenerator) or isinstance(other, Terminator)):
-            raise TypeError('The ConnectingGenerator is being composed with a %s' % type(other)) #pragma: nocover
+            raise NotImplementedError('The ConnectingGenerator is being composed with a %s' % type(other)) #pragma: nocover
 
         other.kwargs[other.tokenskw]=self
         if isinstance(other, ConnectingGenerator):
@@ -142,6 +142,12 @@ class ConnectingGenerator(Iterable):
             with closing(self):
                 #print('Calling %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
                 return other.func(*other.args, **other.kwargs)
+
+    def __ror__(self, other): 
+        if not (isinstance(other, Iterable)):
+            raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other)) #pragma: nocover
+        self.kwargs[self.tokenskw]=other
+        return self
 
     def __gt__(self, other):
         if isinstance(other, string_types) or isinstance(other, integer_types):
@@ -1310,7 +1316,7 @@ def find(pathpattern=None, tokens=None):
     """
     paths=_wrapInIterable(pathpattern) if pathpattern else tokens
     if paths:
-        return chain.from_iterable(glob.iglob(path) for path in paths)
+        return ichain.from_iterable(glob.iglob(path) for path in paths)
     else:
         return glob.iglob('**/*')
 
@@ -1379,14 +1385,14 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
         result=line.split(sep)
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
 @wrap
-def join(sep=None, tokens=None):
-    """
-    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`)
+def join(sep=' ', tokens=None):
+    r"""
+    Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`). Defaults to joining with a space
 
     >>> split(sep=',', n=[1,4], tokens=['flopsy,mopsy,cottontail,peter']) | join(',') | write()
     flopsy,peter
 
-    :param sep: string separator to use to join each line in the stream
+    :param sep: string separator to use to join each line in the stream (default ' ')
     """
     for line in tokens:
         yield sep.join(line)
@@ -1546,7 +1552,7 @@ def takewhile(func=None, tokens=None):
 	"""
 	Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.takewhile`)
 
-	>>> takewhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	>>> [1,2,3,2,1] | takewhile(lambda x: x<3) | aslist()
 	[1, 2]
 
 	:param func: The function to use as a predicate
@@ -1559,13 +1565,94 @@ def dropwhile(func=None, tokens=None):
 	"""
 	Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.dropwhile`)
 
-	>>> dropwhile(lambda x: x<3, tokens=[1,2,3,2,1]) | aslist()
+	>>> [1,2,3,2,1] | dropwhile(lambda x: x<3) | aslist()
 	[3, 2, 1]
 
 	:param func: The function to use as a predicate
 	:param tokens: List of things to filter
 	"""
 	return idropwhile(func, tokens)
+
+@wrap
+def unwrap(tokens=None):
+    """
+    Yields a stream of `list`s, with one level of nesting in the tokens the stream unwrapped (if present).
+
+    >>> [[[1], [2]], [[2, 3, 4], [5]], [[[6]]]] | unwrap() | write()
+    [1, 2]
+    [2, 3, 4, 5]
+    [[6]]
+
+    :param tokens: a stream of Iterables
+    """
+    for token in tokens:
+        yield list(ichain.from_iterable(token))
+
+@wrap
+def traverse(tokens=None):
+    r"""
+    Performs a full depth-first unwrapping of the supplied tokens. Strings are **not** unwrapped
+    >>> ["hello", ["hello", [["world"]]]] | traverse() | join() | write()
+    hello
+    hello world
+    """
+    def recunwrap(token):
+        if isinstance(token, string_types) or not isinstance(token, Iterable):
+            yield token
+        else:
+            for subtoken in _wrapInIterable(token):
+                for subsubtoken in recunwrap(subtoken):
+                    yield subsubtoken
+    for token in tokens:
+        yield list(recunwrap(token))
+
+@wrap
+def separate(tokens=None):
+    r"""
+    Takes a stream of `Iterable`s, and yields items from the iterables 
+
+    >>> [["hello", "there"], ["how", "are"], ["you"]] | separate() | write()
+    hello
+    there
+    how
+    are
+    you
+
+    :param tokens: a stream of Iterables
+    """
+    for token in ichain.from_iterable(tokens):
+        yield token
+
+@wrap
+def combine(func=None, tokens=None):
+    r"""
+    Given a stream, combines the tokens together into a `list`. If `func` is not `None`, the `tokens` are combined 
+    into a series of `list`s, chopping the `list` every time `func` returns True
+
+    >>> ["1 2 3", "4 5 6"] | words() | separate() | smap(lambda x: int(x)+1) | combine() | write()
+    [2, 3, 4, 5, 6, 7]
+    >>> ["first", "line\n", "second", "line\n", "third line\n"] | combine(lambda x: x.endswith('\n')) | join(' ') | write()
+    first line
+    second line
+    third line
+    
+    Note that `separate` followed by `combine` is not a no-op.
+    >>> [["hello", "small"], ["world"]] | separate() | combine() | join() | write()
+    hello small world
+
+    :param tokens: a stream of things
+    """
+    if func is None:
+        yield list(tokens)
+    else:
+        agg=[]
+        for token in tokens:
+            agg.append(token)
+            if func(token):
+                yield agg
+                agg=[]
+        if agg:
+            yield agg
 
 @wrap
 def sformat(pattern, tokens=None):
