@@ -49,35 +49,6 @@ above:
     >>> read('examples/passwd.xz', encoding='utf8') | matches('johndoe') | split([1,3], ':', ' ') | write() 
     johndoe 1000
 
-You don't have to take your input from a file or some other
-``streamutils`` source, as it's easy to pass in an ``Iterable`` that
-you've created elsewhere:
-
-.. code:: python
-
-    >>> import itertools
-    >>> from streamutils import *
-    >>> range(0,1000) | sfilterfalse(lambda x: (x%5) * (x%3)) | ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
-    233168
-    >>> def fib(): 
-    ...     fibs={0:1, 1:1}
-    ...     def fibn(n):
-    ...         return fibs[n] if n in fibs else fibs.setdefault(n, fibn(n-1)+fibn(n-2))
-    ...     for f in itertools.count(0) | smap(fibn):
-    ...         yield f
-    ...
-    >>> fib() | takewhile(lambda x: x<4000000) | sfilterfalse(lambda x: x%2) | ssum() # Euler 2: sum of even fibonacci numbers under four million
-    4613732
-    >>> (range(0, 101) | ssum())**2 - (range(0,101) | smap(lambda x: x*x) | ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
-    25164150
-    >>> top = 110000
-    >>> primes=range(2,top)
-    >>> for p in range(2,int(top**0.5)): # Euler 7: Sieve of Eratosthenes
-    ...     primes|=sfilter(lambda x: (x==p) or (x%p), end=True)
-    ...
-    >>> primes|nth(10001)
-    104743
-
 streamutils also mimics the ``>`` and ``>>`` operators of bash-like
 shells, so to write to files you can write something like:
 
@@ -133,6 +104,35 @@ Or perhaps you need to start off with output from a real command
     ...
     README.md
     src/streamutils/__init__.py
+
+You don't have to take your input from a file or some other
+``streamutils`` source, as it's easy to pass in an ``Iterable`` that
+you've created elsewhere to have some functional programming fun:
+
+.. code:: python
+
+    >>> import itertools
+    >>> from streamutils import *
+    >>> range(0,1000) | sfilterfalse(lambda x: (x%5) * (x%3)) | ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
+    233168
+    >>> def fib():
+    ...     fibs={0:1, 1:1}
+    ...     def fibn(n):
+    ...         return fibs[n] if n in fibs else fibs.setdefault(n, fibn(n-1)+fibn(n-2))
+    ...     for f in itertools.count(0) | smap(fibn):
+    ...         yield f
+    ...
+    >>> fib() | takewhile(lambda x: x<4000000) | sfilterfalse(lambda x: x%2) | ssum() # Euler 2: sum of even fibonacci numbers under four million
+    4613732
+    >>> (range(0, 101) | ssum())**2 - (range(0,101) | smap(lambda x: x*x) | ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
+    25164150
+    >>> top = 110000
+    >>> primes=range(2,top)
+    >>> for p in range(2,int(top**0.5)): # Euler 7: Sieve of Eratosthenes
+    ...     primes|=sfilter(lambda x: (x==p) or (x%p), end=True)
+    ...
+    >>> primes|nth(10001)
+    104743
 
 Features
 --------
@@ -230,7 +230,7 @@ Implemented:
    ``search``) and call a user defined function on each element (e.g. to
    call ``int`` on fields that should be integers)
 -  ``takewhile``, ``dropwhile`` to: yield elements while a predicate is
-   ``True``; drop elements until a predicate is ``True``
+   ``True``; drop elements until a predicate is ``False``
 -  ``unwrap``, ``traverse``: to remove one level of nested lists; to do
    a depth first search through supplied iterables
 

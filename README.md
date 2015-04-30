@@ -31,32 +31,6 @@ johndoe 1000
 johndoe 1000
 ```
 
-You don't have to take your input from a file or some other `streamutils` source, as it's easy to pass in an `Iterable` that you've created elsewhere: 
-```python
->>> import itertools
->>> from streamutils import *
->>> range(0,1000) | sfilterfalse(lambda x: (x%5) * (x%3)) | ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
-233168
->>> def fib(): 
-...		fibs={0:1, 1:1}
-...    	def fibn(n):
-...     	return fibs[n] if n in fibs else fibs.setdefault(n, fibn(n-1)+fibn(n-2))
-...    	for f in itertools.count(0) | smap(fibn):
-...			yield f
-...
->>> fib() | takewhile(lambda x: x<4000000) | sfilterfalse(lambda x: x%2) | ssum() # Euler 2: sum of even fibonacci numbers under four million
-4613732
->>> (range(0, 101) | ssum())**2 - (range(0,101) | smap(lambda x: x*x) | ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
-25164150
->>> top = 110000
->>> primes=range(2,top)
->>> for p in range(2,int(top**0.5)): # Euler 7: Sieve of Eratosthenes
-...     primes|=sfilter(lambda x: (x==p) or (x%p), end=True)
-...
->>> primes|nth(10001)
-104743
-```
-
 streamutils also mimics the `>` and `>>` operators of bash-like shells, so to write to files you can write something like:
 
 ```python
@@ -106,6 +80,33 @@ README.md
 src/streamutils/__init__.py
 ```
 
+You don't have to take your input from a file or some other `streamutils` source, as it's easy to pass in an `Iterable` that you've created elsewhere to have some functional programming fun:
+```python
+>>> import itertools
+>>> from streamutils import *
+>>> range(0,1000) | sfilterfalse(lambda x: (x%5) * (x%3)) | ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
+233168
+>>> def fib():
+...     fibs={0:1, 1:1}
+...     def fibn(n):
+...         return fibs[n] if n in fibs else fibs.setdefault(n, fibn(n-1)+fibn(n-2))
+...     for f in itertools.count(0) | smap(fibn):
+...         yield f
+...
+>>> fib() | takewhile(lambda x: x<4000000) | sfilterfalse(lambda x: x%2) | ssum() # Euler 2: sum of even fibonacci numbers under four million
+4613732
+>>> (range(0, 101) | ssum())**2 - (range(0,101) | smap(lambda x: x*x) | ssum()) # Euler 6: difference between the sum of the squares of the first one hundred natural numbers and the square of the sum.
+25164150
+>>> top = 110000
+>>> primes=range(2,top)
+>>> for p in range(2,int(top**0.5)): # Euler 7: Sieve of Eratosthenes
+...     primes|=sfilter(lambda x: (x==p) or (x%p), end=True)
+...
+>>> primes|nth(10001)
+104743
+```
+
+
 Features
 --------
 
@@ -135,17 +136,17 @@ These are functions designed to start a stream or process a stream. Result is so
 Implemented:
 
 -   `read`, `gzread`, `bzread`, `head`, `tail`, `follow` to: read a file (`cat`); read a file from a gzip file (`zcat`); read a file from a bzip file (`bzcat`); extract the first few tokens of a stream; the last few tokens of a stream; to read new lines of a file as they are appended to it (waits forever like `tail -f`)
-- 	`csvread` to read a csv file
+-   `csvread` to read a csv file
 -   `matches`, `nomatch`, `search`, `replace` to: match tokens (`grep`), find lines that don't match (`grep -v`), to look for patterns in a string (via `re.search` or `re.match`) and return the groups of lines that match (possibly with substitution); replace elements of a string (i.e. implemented via `str.replace` rather than a regexp)
 -   `find`, `fnmatches` to: look for filenames matching a pattern; screen names to see if they match
 -   `split`, `join`, `words` to: split a line (with `str.split`) and return a subset of the line (``cut``); join a line back together (with `str.join`), find all non-overlapping matches that correspond to a 'word' pattern and return a subset of them
 -   `sformat` to: take a `dict` or `list` of strings (e.g. the output of `words`) and format it using the `str.format` syntax (`format` is a builtin, so it would be bad manners not to rename this function).
 -   `sfilter`, `sfilterfalse` to: take a user-defined function and return the items where it returns True; or False. If no function is given, it returns the items that are `True` (or `False`) in a conditional context
 -   `unique` to: only return lines that haven't been seen already (`uniq`)
--	`update`: that updates a stream of `dicts` with another `dict`, or takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
+-   `update`: that updates a stream of `dicts` with another `dict`, or takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
 -   `smap`, `convert` to: take user-defined function and use it to `map` each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
--	`takewhile`, `dropwhile` to: yield elements while a predicate is `True`; drop elements until a predicate is `True`
-- 	`unwrap`, `traverse`: to remove one level of nested lists; to do a depth first search through supplied iterables
+-   `takewhile`, `dropwhile` to: yield elements while a predicate is `True`; drop elements until a predicate is `False`
+-   `unwrap`, `traverse`: to remove one level of nested lists; to do a depth first search through supplied iterables
 
 Stream modifiers:
 
@@ -160,9 +161,9 @@ Implemented:
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
 -   `count`, `bag`, `ssorted`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `ssorted` is a terminator as it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
--	`csvwrite`: to write to a csv file
--	`sumby`, `meanby`, `firstby`, `lastby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
-- 	`sreduce`: to do a pythonic `reduce` on the stream
+-   `csvwrite`: to write to a csv file
+-   `sumby`, `meanby`, `firstby`, `lastby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
+-   `sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream
 -   `nsmallest`, `nlargest` to: find the n smallest or n largest elements in the stream
@@ -179,7 +180,7 @@ There are a number of tenets to the API philosophy, which is intended to maximis
 -   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return, is the first argument of `head`) and their order should be stable over time. For brevity, they should be given sensible defaults. If additional keyword arguments are added, they will be added after existing ones. After the positional arguments comes `fname`, which allows you to avoid using `read`. To be safe, apart from for `read`, `head`, `tail` and `follow`, `fname` should therefore be called as a keyword argument as it marks the first argument whose position is not guaranteed to be stable.
 -   `tokens` is the last keyword argument of each function
 -   If it's sensible for the argument to a function to be e.g. a string or a list of strings then both will be supported (so if you pass a list of filenames to `read` (via `fname`), it will `read` each one in turn).
--	`for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with `\n`)
+-   `for line in open(file):` iterates through a set of `\n`-terminated strings, irrespective of `os.linesep`, so other functions yielding lines should follow a similar convention (for example `run` replaces `\r\n` in its output with `\n`)
 -   This being the 21st century, streamutils opens files in unicode mode (it uses `io.open` in text mode). The benefits of slow-processing outweigh the costs. I am not opposed to adding `readbytes` if there is demand (which would return `str` or `bytes` depending on your python version)
 -   `head(5)` returns the first 5 items, similarly `tail(5)` the last 5 items. `search(pattern, 2)`, `word(3)` and `nth(4)` return the second group, third 'word' and fourth item (not the third, fourth and fifth items). This therefore allows `word(0)` to return all words. Using zero-based indexing in this case feels wrong to me - is that too confusing/suprising? (Note that this matches how the coreutils behave, and besides, python is inconsistent here - `group(1)` is the first not second group, as `group(0)` is reserved for the whole pattern).
 
@@ -190,7 +191,7 @@ Installation and Dependencies
 
 `streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports, on <3.3 it can use the `lzma` backport), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). For now, the easiest way to install it is to pull the latest version direct from github by running:
 
-	pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
+    pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
 
 Once it's been submitted to [pypi], if you've already got the dependencies installed, you'll be able to install streamutils from [pypi] by running:
 
