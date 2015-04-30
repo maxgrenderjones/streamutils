@@ -23,7 +23,12 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: action(func, tokens=None)
 
-    Calls a function for every element that passes through the stream
+    Calls a function for every element that passes through the stream. Similar to ``smap``, only ``action`` is a ``Terminator`` so will
+    end the stream
+
+    >>> ['Hello', 'World'] | smap(str.upper) | action(print)
+    HELLO
+    WORLD
 
     :param func: function to call
     :param tokens: a list of things
@@ -120,14 +125,14 @@ A few things to note as you read the documentation and source code for streamuti
     >>> find('examples/NASA*.bz2') | bzread() | head(1) | write()
     199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] "GET /history/apollo/ HTTP/1.0" 200 6245
 
-    :param fname:  filename or `list` of filenames
+    :param fname:  filename or ``list`` of filenames
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
 
 .. py:function:: combine(func=None, tokens=None)
 
-    Given a stream, combines the tokens together into a `list`. If `func` is not `None`, the `tokens` are combined 
-    into a series of `list`s, chopping the `list` every time `func` returns True
+    Given a stream, combines the tokens together into a ``list``. If ``func`` is not ``None``, the ``tokens`` are combined 
+    into a series of ``list``s, chopping the ``list`` every time ``func`` returns ``True``
 
     >>> ["1 2 3", "4 5 6"] | words() | separate() | smap(lambda x: int(x)+1) | combine() | write()
     [2, 3, 4, 5, 6, 7]
@@ -137,9 +142,11 @@ A few things to note as you read the documentation and source code for streamuti
     third line
     
     Note that `separate` followed by `combine` is not a no-op.
+
     >>> [["hello", "small"], ["world"]] | separate() | combine() | join() | write()
     hello small world
 
+    :param func: If not `None` (the default), combine until `func` returns `True`
     :param tokens: a stream of things
 
 .. py:function:: convert(converters, defaults={}, tokens=None)
@@ -258,8 +265,8 @@ A few things to note as you read the documentation and source code for streamuti
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
-    :param: keys `dict` keys for the values to aggregate on
-    :params: values `dict` keys for the values to be aggregated
+    :param: keys ``dict`` keys for the values to aggregate on
+    :params: values ``dict`` keys for the values to be aggregated
     :return: dict mapping each key to the first value corresponding to that key
 
 .. py:function:: fnmatches(pathpattern, matchcase=False, tokens=None)
@@ -294,7 +301,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     Read a file or files from gzip-ed archives and output the lines within the files.
 
-    :param fname:  filename or `list` of filenames
+    :param fname:  filename or ``list`` of filenames
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
 
@@ -384,8 +391,8 @@ A few things to note as you read the documentation and source code for streamuti
     >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
     True
 
-    :param: keys `dict` keys for the values to aggregate on
-    :params: values `dict` keys for the values to be aggregated
+    :param: keys ``dict`` keys for the values to aggregate on
+    :params: values ``dict`` keys for the values to be aggregated
     :return: dict mapping each key to the sum of all the values corresponding to that key
 
 .. py:function:: nlargest(n, key=None, tokens=None)
@@ -445,7 +452,7 @@ A few things to note as you read the documentation and source code for streamuti
     >>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
     http://github.com/maxgrenderjones/streamutils
 
-    :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
+    :param fname: filename or ``list`` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
     :param encoding: encoding to use to open the file (if None, use platform default)
     :param skip: number of lines to skip at the beginning of each file
     :param tokens: list of filenames
@@ -478,7 +485,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: separate(tokens=None)
 
-    Takes a stream of `Iterable`s, and yields items from the iterables 
+    Takes a stream of ``Iterable``s, and yields items from the iterables 
 
     >>> [["hello", "there"], ["how", "are"], ["you"]] | separate() | write()
     hello
@@ -536,7 +543,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: smap(*funcs, **kwargs)
 
-    Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields f(g(token))`
+    Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields `f(g(token))`
 
     >>> from streamutils import *
     >>> smap(str.upper, tokens=['aeiou']) | write()
@@ -656,7 +663,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: sumby(keys=None, values=None, tokens=None)
 
-    If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
+    If keys and values are not set, given a series of key, value items, returns a ``dict`` of summed values, grouped by key
     
     >>> from streamutils import *
     >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | sumby()
@@ -711,9 +718,12 @@ A few things to note as you read the documentation and source code for streamuti
 .. py:function:: traverse(tokens=None)
 
     Performs a full depth-first unwrapping of the supplied tokens. Strings are **not** unwrapped
+
     >>> ["hello", ["hello", [["world"]]]] | traverse() | join() | write()
     hello
     hello world
+
+    :param tokens: a stream of ``Iterables`` to be unwrapped
 
 .. py:function:: unique(tokens=None)
 
@@ -730,14 +740,14 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: unwrap(tokens=None)
 
-    Yields a stream of `list`s, with one level of nesting in the tokens the stream unwrapped (if present).
+    Yields a stream of ``list``s, with one level of nesting in the tokens the stream unwrapped (if present).
 
     >>> [[[1], [2]], [[2, 3, 4], [5]], [[[6]]]] | unwrap() | write()
     [1, 2]
     [2, 3, 4, 5]
     [[6]]
 
-    :param tokens: a stream of Iterables
+    :param tokens: a stream of `Iterable`s
 
 .. py:function:: update(values=None, funcs=None, tokens=None)
 

@@ -126,7 +126,7 @@ Implemented:
 -	`update`: that updates a stream of `dicts` with another `dict`, or takes a `dict` of `key`, `func` mappings and calls the `func` against each `dict` in the stream to get a value to assign to each `key`
 -   `smap`, `convert` to: take user-defined function and use it to `map` each line; take a `list` or `dict` (e.g. the output of `search`) and call a user defined function on each element (e.g. to call `int` on fields that should be integers)
 -	`takewhile`, `dropwhile` to: yield elements while a predicate is `True`; drop elements until a predicate is `True`
-- 	`unwrap`, 'traverse': to remove one level of nested lists; to do a depth first search through supplied iterables
+- 	`unwrap`, `traverse`: to remove one level of nested lists; to do a depth first search through supplied iterables
 
 Stream modifiers:
 
@@ -139,7 +139,7 @@ These are functions that end a stream. Result may be a single value or a list (o
 Implemented:
 
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
--   `count`, `bag`, `sort`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `sort` is a terminator as a reminder that that it needs to exhaust the stream before it can start working)
+-   `count`, `bag`, `ssorted`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `ssorted` is a terminator as it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
 -	`csvwrite`: to write to a csv file
 -	`sumby`, `meanby`, `firstby`, `lastby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last

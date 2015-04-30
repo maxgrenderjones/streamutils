@@ -212,8 +212,8 @@ Implemented:
    call ``int`` on fields that should be integers)
 -  ``takewhile``, ``dropwhile`` to: yield elements while a predicate is
    ``True``; drop elements until a predicate is ``True``
--  ``unwrap``, 'traverse': to remove one level of nested lists; to do a
-   depth first search through supplied iterables
+-  ``unwrap``, ``traverse``: to remove one level of nested lists; to do
+   a depth first search through supplied iterables
 
 Stream modifiers:
 
@@ -231,12 +231,12 @@ Implemented:
 
 -  ``first``, ``last``, ``nth`` to: return the first item of the stream;
    the last item of the stream; the nth item of the stream
--  ``count``, ``bag``, ``sort``, ``ssum``: to return the number of
+-  ``count``, ``bag``, ``ssorted``, ``ssum``: to return the number of
    tokens in the stream (``wc``); a ``collections.Counter`` (i.e.
    ``dict`` subclass) with unique tokens as keys and a count of their
    occurences as values; a sorted list of the tokens; add the tokens.
-   (Note that ``sort`` is a terminator as a reminder that that it needs
-   to exhaust the stream before it can start working)
+   (Note that ``ssorted`` is a terminator as it needs to exhaust the
+   stream before it can start working)
 -  ``write``: to write the output to a named file, or print it if no
    filename is supplied, or to a writeable thing (e.g an already open
    file) otherwise.

@@ -124,30 +124,20 @@ class ConnectingGenerator(Iterable):
         return self.it
 
     def __or__(self, other):
-        if not (isinstance(other, ConnectingGenerator) or isinstance(other, Terminator)):
-            raise NotImplementedError('The ConnectingGenerator is being composed with a %s' % type(other)) #pragma: nocover
-
-        other.kwargs[other.tokenskw]=self
-        if isinstance(other, ConnectingGenerator):
-            #print('Connecting output of %s to the tokens of %s' % (self.func.__name__, other.func.__name__))
-            if 'end' in other.kwargs and other.kwargs['end']:
-                #print('Caught end')
-                other.kwargs.pop('end')
-                with closing(self):
-                    #print('Creating list from %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
-                    return list(other.func(*other.args, **other.kwargs))
-            #print('Calling %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
-            return other
-        elif isinstance(other, Terminator):
-            with closing(self):
-                #print('Calling %s with args %s and kwargs %s' % (other.func.__name__, other.args, other.kwargs))
-                return other.func(*other.args, **other.kwargs)
+        if isinstance(other, ConnectingGenerator) or isinstance(other, Terminator):
+            return other.__ror__(self)
+        else:
+            raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other))
 
     def __ror__(self, other): 
         if not (isinstance(other, Iterable)):
             raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other)) #pragma: nocover
         self.kwargs[self.tokenskw]=other
-        return self
+        if self.kwargs.pop('end', False):
+            with closing(self):
+                return list(self.func(*self.args, **self.kwargs))
+        else:
+            return self
 
     def __gt__(self, other):
         if isinstance(other, string_types) or isinstance(other, integer_types):
@@ -190,6 +180,16 @@ class Terminator(Callable):
     def __init__(self, func, tokenskw='tokens'):
         self.func=func
         self.tokenskw=tokenskw
+
+    def __ror__(self, other):
+        if not (isinstance(other, Iterable)):
+            raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other)) #pragma: nocover
+        self.kwargs[self.tokenskw]=other
+        try:
+            return self.func(*self.args, **self.kwargs)
+        finally:
+            if other and hasattr(other, 'close'):
+                other.close()
 
     def __call__(self, *args, **kwargs):
         self.args=list(args)
@@ -706,7 +706,7 @@ def ssum(start=0, tokens=None):
 @wrapTerminator
 def sumby(keys=None, values=None, tokens=None):
     """
-    If keys and values are not set, given a series of key, value items, returns a dict of summed values, grouped by key
+    If keys and values are not set, given a series of key, value items, returns a ``dict`` of summed values, grouped by key
     
     >>> from streamutils import *
     >>> sums = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | sumby()
@@ -755,8 +755,8 @@ def meanby(keys=None, values=None, tokens=None):
     >>> means == {1: {'value': 3.0}, 2: {'value': 5.0}}
     True
 
-    :param: keys `dict` keys for the values to aggregate on
-    :params: values `dict` keys for the values to be aggregated
+    :param: keys ``dict`` keys for the values to aggregate on
+    :params: values ``dict`` keys for the values to be aggregated
     :return: dict mapping each key to the sum of all the values corresponding to that key
     """
     counts={}
@@ -785,8 +785,8 @@ def firstby(keys=None, values=None, tokens=None):
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
     True
 
-    :param: keys `dict` keys for the values to aggregate on
-    :params: values `dict` keys for the values to be aggregated
+    :param: keys ``dict`` keys for the values to aggregate on
+    :params: values ``dict`` keys for the values to be aggregated
     :return: dict mapping each key to the first value corresponding to that key
     """
     result={}
@@ -844,7 +844,12 @@ def bag(tokens=None):
 @wrapTerminator
 def action(func, tokens=None):
     """
-    Calls a function for every element that passes through the stream
+    Calls a function for every element that passes through the stream. Similar to ``smap``, only ``action`` is a ``Terminator`` so will
+    end the stream
+
+    >>> ['Hello', 'World'] | smap(str.upper) | action(print)
+    HELLO
+    WORLD
 
     :param func: function to call
     :param tokens: a list of things
@@ -872,12 +877,12 @@ def write(fname=None, encoding=None, tokens=None):
     >>> from streamutils import *
     >>> from six import StringIO
     >>> lines=['%s\n' % line for line in ['Three', 'Blind', 'Mice']]
-    >>> head(tokens=lines) | write() # By default prints to the console
+    >>> lines | head() | write() # By default prints to the console
     Three
     Blind
     Mice
     >>> buffer = StringIO() # Alternatively write to an open filelike object
-    >>> head(tokens=lines) | write(fname=buffer)
+    >>> lines | head() | write(fname=buffer)
     >>> writtenlines=buffer.getvalue().splitlines()
     >>> writtenlines[0]=='Three'
     True
@@ -1107,7 +1112,7 @@ def bzread(fname=None, encoding=None, tokens=None):
     >>> find('examples/NASA*.bz2') | bzread() | head(1) | write()
     199.72.81.55 - - [01/Jul/1995:00:00:01 -0400] "GET /history/apollo/ HTTP/1.0" 200 6245
 
-    :param fname:  filename or `list` of filenames
+    :param fname:  filename or ``list`` of filenames
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
     """
@@ -1123,7 +1128,7 @@ def gzread(fname=None, encoding=None, tokens=None):
     """
     Read a file or files from gzip-ed archives and output the lines within the files.
 
-    :param fname:  filename or `list` of filenames
+    :param fname:  filename or ``list`` of filenames
     :param encoding: unicode encoding to use to open the file (if None, use platform default)
     :param tokens: list of filenames
     """
@@ -1144,7 +1149,7 @@ def read(fname=None, encoding=None, skip=0, tokens=None):
     >>> read('https://raw.github.com/maxgrenderjones/streamutils/master/README.md') | search('^[-] Source Code: (.*)', 1) | write()
     http://github.com/maxgrenderjones/streamutils
 
-    :param fname: filename or `list` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
+    :param fname: filename or ``list`` of filenames. Can either be paths to local files or URLs (e.g. http:// or ftp:// - supports the same protocols as :py:func:`urllib2.urlopen`)
     :param encoding: encoding to use to open the file (if None, use platform default)
     :param skip: number of lines to skip at the beginning of each file
     :param tokens: list of filenames
@@ -1191,7 +1196,7 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
     :param fname: Filename (or list of flienames) to search through
     :param encoding: Encoding to use to open the files
     :param names: dict of groups to names - if included, result will be a dict
-    :param inject: Used in conjunction with names, a `dict` of key: values to inject into the results dictionary
+    :param inject: Used in conjunction with names, a ``dict`` of key: values to inject into the results dictionary
     :param strict: If True, raise a ValueError if every line doesn't match the pattern (default False)
     :param flags: Regexp flags to use
     :param tokens: strings to search through
@@ -1484,7 +1489,7 @@ def convert(converters, defaults={}, tokens=None):
 @wrap
 def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=None), but 2.x won't
     """
-    Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields f(g(token))`
+    Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields `f(g(token))`
 
     >>> from streamutils import *
     >>> smap(str.upper, tokens=['aeiou']) | write()
@@ -1576,14 +1581,14 @@ def dropwhile(func=None, tokens=None):
 @wrap
 def unwrap(tokens=None):
     """
-    Yields a stream of `list`s, with one level of nesting in the tokens the stream unwrapped (if present).
+    Yields a stream of ``list``s, with one level of nesting in the tokens the stream unwrapped (if present).
 
     >>> [[[1], [2]], [[2, 3, 4], [5]], [[[6]]]] | unwrap() | write()
     [1, 2]
     [2, 3, 4, 5]
     [[6]]
 
-    :param tokens: a stream of Iterables
+    :param tokens: a stream of `Iterable`s
     """
     for token in tokens:
         yield list(ichain.from_iterable(token))
@@ -1592,9 +1597,12 @@ def unwrap(tokens=None):
 def traverse(tokens=None):
     r"""
     Performs a full depth-first unwrapping of the supplied tokens. Strings are **not** unwrapped
+
     >>> ["hello", ["hello", [["world"]]]] | traverse() | join() | write()
     hello
     hello world
+
+    :param tokens: a stream of ``Iterables`` to be unwrapped
     """
     def recunwrap(token):
         if isinstance(token, string_types) or not isinstance(token, Iterable):
@@ -1609,7 +1617,7 @@ def traverse(tokens=None):
 @wrap
 def separate(tokens=None):
     r"""
-    Takes a stream of `Iterable`s, and yields items from the iterables 
+    Takes a stream of ``Iterable``s, and yields items from the iterables 
 
     >>> [["hello", "there"], ["how", "are"], ["you"]] | separate() | write()
     hello
@@ -1626,8 +1634,8 @@ def separate(tokens=None):
 @wrap
 def combine(func=None, tokens=None):
     r"""
-    Given a stream, combines the tokens together into a `list`. If `func` is not `None`, the `tokens` are combined 
-    into a series of `list`s, chopping the `list` every time `func` returns True
+    Given a stream, combines the tokens together into a ``list``. If ``func`` is not ``None``, the ``tokens`` are combined 
+    into a series of ``list``s, chopping the ``list`` every time ``func`` returns ``True``
 
     >>> ["1 2 3", "4 5 6"] | words() | separate() | smap(lambda x: int(x)+1) | combine() | write()
     [2, 3, 4, 5, 6, 7]
@@ -1637,9 +1645,11 @@ def combine(func=None, tokens=None):
     third line
     
     Note that `separate` followed by `combine` is not a no-op.
+
     >>> [["hello", "small"], ["world"]] | separate() | combine() | join() | write()
     hello small world
 
+    :param func: If not `None` (the default), combine until `func` returns `True`
     :param tokens: a stream of things
     """
     if func is None:
