@@ -109,9 +109,17 @@ class ConnectingGenerator(Iterable):
         self.it=None
 
     def __iter__(self):
-        it=self.func(*self.args, **self.kwargs)
+        print(self.func.__name__, self.args, self.kwargs)
+        if self.func.__name__ not in {'head', 'read', 'gzread', 'bzread', 'tail', 'follow', 'write', 'find', 'smap'}:
+            try:
+                import numba
+                it=numba.autojit()(self.func)(*self.args, **self.kwargs)
+            except ImportError:
+                it=self.func(*self.args, **self.kwargs)
+        else:
+            it=self.func(*self.args, **self.kwargs)
         if isinstance(self.it, Iterator):
-            pass # Function returned a genarator (or similar)
+            pass # Function returned a generator (or similar)
         elif isinstance(it, Iterable):
             it = it.__iter__() #Function returned a list (or similar)
         elif hasattr(it, '__iter__'): #pragma: nocover - I don't know if this is needed
@@ -1473,7 +1481,7 @@ def convert(converters, defaults={}, tokens=None):
         yield line
 
 @wrap
-def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=None), but 2.x won't
+def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=None), but 2.x won't #numba doesn't support *args or **kwargs
     """
     Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields `f(g(token))`
 
@@ -1484,7 +1492,7 @@ def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=N
     HELLO
     WORLD
 
-    :param *funcs: functions to apply
+    :param funcs: functions to apply
     :param tokens: list/iterable of objects
     """
     return map(reduce(lambda f, g: lambda x: f(g(x)), funcs), kwargs['tokens'])
