@@ -98,12 +98,10 @@ Or perhaps you need to start off with output from a real command
 .. code:: python
 
     >>> from streamutils import *
-    >>> edited=run(['git', 'status']) | matches('modified:') | words(2) # doctest: +SKIP
-    >>> for edit in edited:                                             # doctest: +SKIP
-    ...    print(edit)
-    ...
-    README.md
-    src/streamutils/__init__.py
+    >>> import platform
+    >>> cat = 'type' if platform.system()=='Windows' else 'cat' 
+    >>> run([cat, 'setup.py']) | search("keywords='(.*)'", group=1) | write()
+    UNIX pipelines for python
 
 You don't have to take your input from a file or some other
 ``streamutils`` source, as it's easy to pass in an ``Iterable`` that
@@ -111,10 +109,14 @@ you've created elsewhere to have some functional programming fun:
 
 .. code:: python
 
-    >>> import itertools
     >>> from streamutils import *
+    >>> 1 | smap(float) | aslist() # Non-iterables are auto-wrapped
+    [1.0]
+    >>> ['d', 'c', 'b', 'a'] | smap(lambda x: (x.upper(), x)) | ssorted(key=lambda x: x[0]) | smap(lambda x: x[1]) | aslist() # Streamutils' Schwartzian transform (sorting against an expensive-to-compute key)
+    ['a', 'b', 'c', 'd']
     >>> range(0,1000) | sfilterfalse(lambda x: (x%5) * (x%3)) | ssum() # Euler1: sum of first 1000 numbers divisible by 3 or 5
     233168
+    >>> import itertools
     >>> def fib():
     ...     fibs={0:1, 1:1}
     ...     def fibn(n):
@@ -149,11 +151,13 @@ Features
    transformations with ``convert``)
 -  Unicode-aware: all functions that read from files or file-like things
    take an ``encoding`` parameter
--  Not why I wrote the library at all, but come to think of it, many of
+-  Not why I wrote the library at all but as shown above many of
    ``streamutils`` functions are 'pure' in the functional sense, so if
    you squint your eyes, you might be able to think of this as a way
-   into functional programming, with a much nicer (if less pythonic)
-   syntax than say `toolz <https://github.com/pytoolz/toolz>`__
+   into functional programming, with a much nicer syntax (imho, as
+   function composition reads left to right not right to left, which
+   makes it more readable if less pythonic) than say
+   `toolz <https://github.com/pytoolz/toolz>`__
 
 Non-features
 ------------
@@ -164,10 +168,13 @@ develop' is better than 'Fast to run', and if there's a downside to
 no doubt much faster than ``search``/``match`` from ``streamutils``. But
 then you can't call python functions from them, or call them from python
 code on your windows machine. As they say, 'you pays your money and you
-take your choice'. That said, I'd be curious to discover if
-``streamutils`` could get a material speedup from either ``numba``
-(where it would get the benefits for 'free') or ``cython`` (as per
-``cytoolz``).
+take your choice'. Since ``streamutils`` uses so many unsupported
+features (generators, default args, context managers), using ``numba``
+to get speed-ups for free would sadly appear to not be an option for now
+(at least not without the help of a ``numba``-expert) and though
+``cython`` (as per ``cytoolz``) would certainly work it would make
+``streamutils`` much harder to install and would require a lot more
+effort.
 
 Functions
 ---------
@@ -191,7 +198,7 @@ Composable Functions
 These are functions designed to start a stream or process a stream.
 Result is something that can be iterated over
 
-Implemented:
+Functions that act on one token at a time:
 
 -  ``read``, ``gzread``, ``bzread``, ``head``, ``tail``, ``follow`` to:
    read a file (``cat``); read a file from a gzip file (``zcat``); read

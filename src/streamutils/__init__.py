@@ -82,8 +82,6 @@ class ComposableFunction(Callable):
         """
         self.func=func
         self.tokenskw=tokenskw
-        #spec = inspect.getargspec(func)
-        #print('Creating Composable function for function with spec: %s' % repr(spec))
 
     def __call__(self, *args, **kwargs):
         #print('Calling %s via ConnectingGenerator with args %s and kwargs %s' % (self.func.__name__, args, kwargs))
@@ -111,7 +109,7 @@ class ConnectingGenerator(Iterable):
     def __iter__(self):
         it=self.func(*self.args, **self.kwargs)
         if isinstance(self.it, Iterator):
-            pass # Function returned a genarator (or similar)
+            pass # Function returned a generator (or similar)
         elif isinstance(it, Iterable):
             it = it.__iter__() #Function returned a list (or similar)
         elif hasattr(it, '__iter__'): #pragma: nocover - I don't know if this is needed
@@ -131,7 +129,7 @@ class ConnectingGenerator(Iterable):
 
     def __ror__(self, other): 
         if not (isinstance(other, Iterable)):
-            raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other)) #pragma: nocover
+            other=_wrapInIterable(other)
         self.kwargs[self.tokenskw]=other
         if self.kwargs.pop('end', False):
             with closing(self):
@@ -417,7 +415,8 @@ def _wrapInIterable(item):
 def run(command, err=False, cwd=None, env=None, tokens=None):
     """
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
-    expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
+    expected on windows. Current implementation runs in the same process so gathers the full output of the command 
+    before passing output to subsequent functions.
 
     >>> from streamutils import * #Suggestions for better commands to use as examples welcome!
     >>> rev=run('git log --reverse') | search('commit (\w+)', group=1) | first()
@@ -1178,7 +1177,7 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
     :param group: Group (``int``) or groups (``list`` of `int`s or match names) to return. (Note: 0 returns the whole match,
             None returns the matches in a group as a list)
     :param to: Regexp substition pattern to return - uses :py:func:`re.sub`
-    :param match: ``True`` - use :py:func:`re.search`, ``False`` (default) use :py:func:`re.match`
+    :param match: If ``False`` (default) use :py:func:`re.search` elif ``True`` use :py:func:`re.match`
     :param fname: Filename (or list of flienames) to search through
     :param encoding: Encoding to use to open the files
     :param names: dict of groups to names - if included, result will be a dict
