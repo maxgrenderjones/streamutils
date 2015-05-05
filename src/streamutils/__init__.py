@@ -55,15 +55,16 @@ __author__= 'maxgrenderjones'
 __docformat__ = 'restructuredtext'
 
 class Connector(Iterable):
-    def __init__(self, func, tokenskw, args, kwargs):
+    def __init__(self, func, tokenskw='tokens'):
         #print 'Create a Connector for function %s with pattern %s' % (func.__name__, args[0])
         self.func=func
         self.tokenskw=tokenskw
-        self.args=args
+
+    def __call__(self, *args, **kwargs):
+        self.args=list(args)
         self.kwargs=kwargs
-        #spec = inspect.getargspec(func)
-        #print('Creating Connecting for function with spec: %s' % repr(spec))
         self.it=None
+        return self
 
     def __iter__(self):
         it=self.func(*self.args, **self.kwargs)
@@ -320,10 +321,7 @@ def connector(func):
     :param func: The function to be wrapped - should either yield items into the pipeline or return an iterable
     :param tokenskw: The keyword argument that func expects to receive tokens on
     '''
-    tokenskw='tokens'
-    def ConnectedFunction(*args, **kwargs):
-       return Connector(func, tokenskw, list(args), kwargs) 
-    cf = update_wrapper(ConnectedFunction, func)
+    cf = update_wrapper(Connector(func), func)
     __test__[func.__name__]=func
     __all__.append(func.__name__)
     return cf
