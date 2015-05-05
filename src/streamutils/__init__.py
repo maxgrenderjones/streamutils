@@ -762,6 +762,17 @@ def lastby(keys=None, values=None, tokens=None):
     return result
 
 @terminator
+def countby(keys, tokens=None):
+    """
+    Given a series of keys, return a dict of how many times each corresponding set of values appear in the stream
+
+    >>> counts = [{'A': 6}, {'A': 5}, {'A': 4}] | countby(keys='A')
+    >>> dict(counts) == {6: 1, 5: 1, 4: 1}
+    True
+    """
+    return tokens | smap(lambda x: x[keys if isinstance(keys, string_types) else tuple(data[key] for key in keys)]) | bag()
+
+@terminator
 def bag(tokens=None):
     """
     Counts the number of occurences of each of the elements of the stream

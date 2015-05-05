@@ -154,7 +154,7 @@ Implemented:
 -   `count`, `bag`, `ssorted`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `ssorted` is a terminator as it needs to exhaust the stream before it can start working)
 -   `write`: to write the output to a named file, or print it if no filename is supplied, or to a writeable thing (e.g an already open file) otherwise.
 -   `csvwrite`: to write to a csv file
--   `sumby`, `meanby`, `firstby`, `lastby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last
+-   `sumby`, `meanby`, `firstby`, `lastby`, `countby`: to aggregate by a key or keys, and then sum / take the mean / take the first / take the last / count
 -   `sreduce`: to do a pythonic `reduce` on the stream
 -   `action`: for every token, call a user-defined function
 -   `smax`, `smin` to: return the maximum or minimum element in the stream

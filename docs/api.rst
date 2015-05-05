@@ -196,6 +196,14 @@ A few things to note as you read the documentation and source code for streamuti
     :param tokens: Things to count
     :return: number of items in the stream as an ``int``
 
+.. py:function:: countby(keys, tokens=None)
+
+    Given a series of keys, return a dict of how many times each corresponding set of values appear in the stream
+
+    >>> counts = [{'A': 6}, {'A': 5}, {'A': 4}] | countby(keys='A')
+    >>> dict(counts) == {6: 1, 5: 1, 4: 1}
+    True
+
 .. py:function:: csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0, restkey=None, restval=None, tokens=None, **fmtparams)
 
     Reads a file or stream and parses it as a csv file using a :py:func:`csv.reader`. If names is set, uses a :py:func:`csv.DictReader`
