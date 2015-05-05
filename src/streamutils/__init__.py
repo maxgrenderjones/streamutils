@@ -17,7 +17,7 @@ A few things to note as you read the documentation and source code for streamuti
  *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
     normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
     which python is in use to give a correct overall coverage report
- *  Once wrapped, ComposableFunctions return a generator that can be iterated over (or if called with ``end=True``) return
+ *  Once wrapped, ConnectedFunctions return a generator that can be iterated over (or if called with ``end=True``) return
     a ``list``. Terminators return things e.g. the first item in the list (see ``first``), or a ``list`` of the items in
     the stream (see ``aslist``)
 
@@ -54,50 +54,9 @@ from .version import __version__
 __author__= 'maxgrenderjones'
 __docformat__ = 'restructuredtext'
 
-class SHWrapper(object):
-    def __getattribute__(self, name):
-        if name=='__name__':
-            return 'sh'
-        elif name.startswith('__') and name.endwith('__'):
-            #We don't want to try importing sh/pbs unless we know
-            #that's what the user wants
-            return super(SHWrapper, self).__getattribute__(name)
-        try:
-            import sh as realsh
-        except ImportError:
-            try:
-                import pbs as realsh
-            except ImportError:
-                raise ImportError('Neither sh or pbs are available - sh functionality is therefore not available')
-        return wrap(realsh.Command(name))
-
-sh=SHWrapper()
-
-class ComposableFunction(Callable):
-    def __init__(self, func, tokenskw='tokens'):
-        """
-        Creates a composable function by wrapping func, which expects to receive tokens on its tokenskw
-        :param func:
-        :param tokenskw:
-        """
-        self.func=func
-        self.tokenskw=tokenskw
-
-    def __call__(self, *args, **kwargs):
-        #print('Calling %s via ConnectingGenerator with args %s and kwargs %s' % (self.func.__name__, args, kwargs))
-        return ConnectingGenerator(self.func, self.tokenskw, list(args), kwargs)
-
-    def __getattr__(self, name):
-        f=getattr(self.func, name)
-        #Kludge (ish) to allow sh's attribute access to work
-        if name !='__get__' and callable(f): # Need to only follow this path if it's a sh callable.
-             return wrap(f)
-        else:
-             return f
-
-class ConnectingGenerator(Iterable):
+class Connector(Iterable):
     def __init__(self, func, tokenskw, args, kwargs):
-        #print 'Create a ConnectingGenerator for function %s with pattern %s' % (func.__name__, args[0])
+        #print 'Create a Connector for function %s with pattern %s' % (func.__name__, args[0])
         self.func=func
         self.tokenskw=tokenskw
         self.args=args
@@ -114,18 +73,16 @@ class ConnectingGenerator(Iterable):
             it = it.__iter__() #Function returned a list (or similar)
         elif hasattr(it, '__iter__'): #pragma: nocover - I don't know if this is needed
             it = it.__iter__() #Function returned an iterable duck
-        elif str(type(it)) in ("<class 'pbs.RunningCommand'>"): #can't compare directly in case this feature not installed
-            it=iter(it.stdout.splitlines()) #stdout is a string, not an open file
         else:  #pragma: nocover
             raise TypeError('Composable Functions must return Iterators or Iterables (got %s)' % type(iter))
         self.it=it
         return self.it
 
     def __or__(self, other):
-        if isinstance(other, ConnectingGenerator) or isinstance(other, Terminator):
+        if isinstance(other, Connector) or isinstance(other, Terminator):
             return other.__ror__(self)
         else:
-            raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other))
+            raise NotImplementedError('Cannot compose a Connector with a %s' % type(other))
 
     def __ror__(self, other): 
         if not (isinstance(other, Iterable)):
@@ -163,7 +120,7 @@ class Terminator(Callable):
 
     def __ror__(self, other):
         if not (isinstance(other, Iterable)):
-            raise NotImplementedError('Cannot compose a ConnectingGenerator with a %s' % type(other)) #pragma: nocover
+            raise NotImplementedError('Cannot compose a Connector with a %s' % type(other)) #pragma: nocover
         self.kwargs[self.tokenskw]=other
         try:
             return self.func(*self.args, **self.kwargs)
@@ -175,7 +132,7 @@ class Terminator(Callable):
         self.args=list(args)
         self.kwargs=kwargs
         return self #We don't do anything yet, as tokens won't be set yet - func is called by the
-                    #OR inside the ConnectingGenerator, after setting tokens
+                    #OR inside the Connector, after setting tokens
 
     def __getattr__(self, name):
         return getattr(self.func, name)
@@ -354,23 +311,24 @@ def _ntodict(results, n, names, inject={}):
                 return results
 
 __test__ = {}
-__all__ = ['sh', 'wrap', 'wrapTerminator']
+__all__ = ['connector', 'terminator']
 
-def wrap(func):
+def connector(func):
     '''
-    Decorator function used to create a ComposableFunction
+    Decorator function used to create a ConnectedFunction (which yield a Connector once called)
 
     :param func: The function to be wrapped - should either yield items into the pipeline or return an iterable
     :param tokenskw: The keyword argument that func expects to receive tokens on
     '''
-    cf=ComposableFunction(func)
-    if hasattr(func, '__name__'): #sh isn't really a function
-         cf = update_wrapper(cf, func)
-         __test__[func.__name__]=func
-         __all__.append(func.__name__)
+    tokenskw='tokens'
+    def ConnectedFunction(*args, **kwargs):
+       return Connector(func, tokenskw, list(args), kwargs) 
+    cf = update_wrapper(ConnectedFunction, func)
+    __test__[func.__name__]=func
+    __all__.append(func.__name__)
     return cf
 
-def wrapTerminator(func):
+def terminator(func):
     """
     Used as a decorator to create a Terminator function that can end a pipeline
 
@@ -411,7 +369,7 @@ def _wrapInIterable(item):
     else:
         return [item]
 
-@wrap
+@connector
 def run(command, err=False, cwd=None, env=None, tokens=None):
     """
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
@@ -422,7 +380,6 @@ def run(command, err=False, cwd=None, env=None, tokens=None):
     >>> rev=run('git log --reverse') | search('commit (\w+)', group=1) | first()
     >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
     True
-    >>> #rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
 
     :param command: Command to run
     :param err: Redirect standard error to standard out (default False)
@@ -442,7 +399,7 @@ def run(command, err=False, cwd=None, env=None, tokens=None):
 
     return output
 
-@wrapTerminator
+@terminator
 def first(default=None, tokens=None):
     """
     Returns the first item in the stream
@@ -457,7 +414,7 @@ def first(default=None, tokens=None):
         return line
     return default
 
-@wrapTerminator
+@terminator
 def last(default=None, tokens=None,):
     """
     Returns the final item in the stream
@@ -472,7 +429,7 @@ def last(default=None, tokens=None,):
     return out
 
 
-@wrapTerminator
+@terminator
 def aslist(tokens=None):
     """
     Returns the output of the stream as a list. Used as a a more readable alternative to calling with ``end=True``
@@ -494,7 +451,7 @@ def aslist(tokens=None):
     """
     return list(tokens)
 
-@wrapTerminator
+@terminator
 def asdict(key=None, names=None, tokens=None):
     """
     Creates a dict or dict of dicts from the result of a stream
@@ -560,7 +517,7 @@ def asdict(key=None, names=None, tokens=None):
 
 
 
-@wrapTerminator
+@terminator
 def nth(n, default=None, tokens=None):
     """
     Returns the nth item in the stream, or a default if the list has less than n items
@@ -581,7 +538,7 @@ def nth(n, default=None, tokens=None):
     """
     return next(islice(tokens, n-1, None), default) # See nth recipe in https://docs.python.org/2/library/itertools.html#itertools.islice
 
-@wrapTerminator
+@terminator
 def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     """
     Sorts the output of the stream (see documentation for :py:func:`sorted`). Warning: ``cmp`` was removed from ``sorted``
@@ -600,7 +557,7 @@ def ssorted(cmp=None, key=None, reverse=False, tokens=None):
     else:
         return sorted(tokens, cmp=cmp, key=key, reverse=reverse)
 
-@wrapTerminator
+@terminator
 def nsmallest(n, key=None, tokens=None):
     """
     Returns the n smallest elements of the stream (see documentation for :py:func:`heapq.nsmallest`)
@@ -612,7 +569,7 @@ def nsmallest(n, key=None, tokens=None):
     return heapq.nsmallest(n, tokens, key) if key else heapq.nsmallest(n, tokens)
 
 
-@wrapTerminator
+@terminator
 def nlargest(n, key=None, tokens=None):
     """
     Returns the n largest elements of the stream (see documentation for :py:func:`heapq.nlargest`)
@@ -623,7 +580,7 @@ def nlargest(n, key=None, tokens=None):
     """
     return heapq.nlargest(n, tokens, key) if key else heapq.nlargest(n, tokens)
 
-@wrapTerminator
+@terminator
 def smax(key=None, tokens=None):
     """
     Returns the largest item in the stream
@@ -639,7 +596,7 @@ def smax(key=None, tokens=None):
     """
     return max(tokens, key=key) if key else max(tokens)
 
-@wrapTerminator
+@terminator
 def smin(key=None, tokens=None):
     """
     Returns the smallest item in the stream
@@ -655,7 +612,7 @@ def smin(key=None, tokens=None):
     """
     return min(tokens, key=key) if key else min(tokens)
 
-@wrapTerminator
+@terminator
 def count(tokens=None):
     """
     Counts the number of items that pass through the stream (cf ``wc -l``)
@@ -670,7 +627,7 @@ def count(tokens=None):
     """
     return sum(1 for line in tokens)
 
-@wrapTerminator
+@terminator
 def ssum(start=0, tokens=None):
     """
     Adds the items that pass through the stream via call to :py:func:`sum`
@@ -684,7 +641,7 @@ def ssum(start=0, tokens=None):
     """
     return sum(tokens, start)
 
-@wrapTerminator
+@terminator
 def sumby(keys=None, values=None, tokens=None):
     """
     If keys and values are not set, given a series of key, value items, returns a ``dict`` of summed values, grouped by key
@@ -719,7 +676,7 @@ def sumby(keys=None, values=None, tokens=None):
             result[key]=result.get(key, 0)+value
     return result
 
-@wrapTerminator
+@terminator
 def meanby(keys=None, values=None, tokens=None):
     """
     If key is not set, given a series of key, value items, returns a dict of means, grouped by key
@@ -756,7 +713,7 @@ def meanby(keys=None, values=None, tokens=None):
             totals[key]=totals.get(key, 0)+value
         return dict((key, totals[key]/counts[key]) for key in counts)
 
-@wrapTerminator
+@terminator
 def firstby(keys=None, values=None, tokens=None):
     """
     Given a series of key, value items, returns a dict of the first value assigned to each key
@@ -783,7 +740,7 @@ def firstby(keys=None, values=None, tokens=None):
                 result[key]=value
     return result
 
-@wrapTerminator
+@terminator
 def lastby(keys=None, values=None, tokens=None):
     """
     Given a series of key, value items, returns a dict of the last value assigned to each key
@@ -806,7 +763,7 @@ def lastby(keys=None, values=None, tokens=None):
             result[key]=value
     return result
 
-@wrapTerminator
+@terminator
 def bag(tokens=None):
     """
     Counts the number of occurences of each of the elements of the stream
@@ -822,7 +779,7 @@ def bag(tokens=None):
     """
     return Counter(tokens)
 
-@wrapTerminator
+@terminator
 def action(func, tokens=None):
     """
     Calls a function for every element that passes through the stream. Similar to ``smap``, only ``action`` is a ``Terminator`` so will
@@ -838,7 +795,7 @@ def action(func, tokens=None):
     for line in tokens:
         func(line)
 
-@wrapTerminator
+@terminator
 def sreduce(func, initial=None, tokens=None):
     """
     Uses a function to :py:func:`reduce` the output to a single value
@@ -849,7 +806,7 @@ def sreduce(func, initial=None, tokens=None):
     """
     return reduce(func, tokens, initial)
 
-@wrapTerminator
+@terminator
 def write(fname=None, mode='wt', encoding=None, tokens=None):
     r"""
     Writes the output of the stream to a file, or via ``print`` if no file is supplied. Calls to ``print`` include
@@ -888,7 +845,7 @@ def write(fname=None, mode='wt', encoding=None, tokens=None):
     else:
         raise TypeError('fname must be a filename or a file-like thing, got %s which is a %s' % (fname, type(fname)))
 
-@wrap
+@connector
 def unique(tokens=None):
     """
     Passes through values the first time they are seen
@@ -908,7 +865,7 @@ def unique(tokens=None):
             s.add(line)
             yield line
 
-@wrap
+@connector
 def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
     """
     (Optionally) opens a file and passes through the first ``n`` items
@@ -954,7 +911,7 @@ def head(n=10, fname=None, skip=0, encoding=None, tokens=None):
                             break
                     start=i+1
 
-@wrap
+@connector
 def tail(n=10, fname=None, encoding=None, tokens=None):
     """
     Returns a list of the last ``n`` items in the stream
@@ -979,7 +936,7 @@ def tail(n=10, fname=None, encoding=None, tokens=None):
     with _eopen(fname, encoding) if fname else _noopcontext(tokens) as tokens:
         return deque(tokens, n)
 
-@wrap
+@connector
 def sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None):
     """
     Provides access to a slice of the stream between ``start`` and ``stop`` at intervals of ``step``
@@ -1005,7 +962,7 @@ def sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None):
         for line in islice(tokens, start-1, stop-1 if stop else None, step):
             yield line  # Can't return the iterator or the file will be closed (I think!)
 
-@wrap
+@connector
 def follow(fname, encoding=None): #pragma: nocover - runs forever!
     """
     Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never returns)
@@ -1022,7 +979,7 @@ def follow(fname, encoding=None): #pragma: nocover - runs forever!
                 continue
             yield line
 
-@wrap
+@connector
 def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0, restkey=None, restval=None, tokens=None, **fmtparams):
     """
     Reads a file or stream and parses it as a csv file using a :py:func:`csv.reader`. If names is set, uses a :py:func:`csv.DictReader`
@@ -1059,7 +1016,7 @@ def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0,
             else:
                 yield row
 
-@wrapTerminator
+@terminator
 def csvwrite(fname=None, encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams):
     """
     Writes the stream to a file (or stdout) in csv format using :py:func:`csv.writer`. If names is set, uses a :py:func:`csv.DictWriter`
@@ -1089,7 +1046,7 @@ def csvwrite(fname=None, encoding=None, dialect='excel', names=None, restval='',
         for token in tokens: 
             writer.writerow(token)
 
-@wrap
+@connector
 def bzread(fname=None, encoding=None, tokens=None):
     """
     Read a file or files from bzip2-ed archives and output the lines within the files.
@@ -1108,7 +1065,7 @@ def bzread(fname=None, encoding=None, tokens=None):
             for line in lines:
                 yield line
 
-@wrap
+@connector
 def gzread(fname=None, encoding=None, tokens=None):
     """
     Read a file or files from gzip-ed archives and output the lines within the files.
@@ -1125,7 +1082,7 @@ def gzread(fname=None, encoding=None, tokens=None):
             for line in lines:
                 yield line
 
-@wrap
+@connector
 def read(fname=None, encoding=None, skip=0, tokens=None):
     """
     Read a file or files and output the lines it contains. Files are opened with :py:func:`io.read`
@@ -1150,7 +1107,7 @@ def read(fname=None, encoding=None, skip=0, tokens=None):
         for line in fileinput.input('-'):
             yield line
 
-@wrap
+@connector
 def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, names=None, inject={}, flags=0,
            strict=False, tokens=None):
     """
@@ -1203,7 +1160,7 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
             if result:
                 yield _groupstodict(result, group, names, inject)
 
-@wrap
+@connector
 def replace(old, new, tokens=None):
     """
     Replace ``old`` in each tokens with ``new`` via call to ``.replace`` on each token (e.g. :py:func:`str.replace`)
@@ -1215,7 +1172,7 @@ def replace(old, new, tokens=None):
     for line in tokens:
         yield line.replace(old, new)
 
-@wrap
+@connector
 def matches(pattern, match=False, flags=0, v=False, tokens=None):
     """
     Filters the input for strings that match the pattern (think UNIX ``grep``)
@@ -1241,7 +1198,7 @@ def matches(pattern, match=False, flags=0, v=False, tokens=None):
             yield line
         elif v and not result:
             yield line
-@wrap
+@connector
 def nomatch(pattern, match=False, flags=0, tokens=None):
     """
     Filters the input for strings that don't match the pattern (think UNIX ``grep -v``)
@@ -1260,7 +1217,7 @@ def nomatch(pattern, match=False, flags=0, tokens=None):
     for token in matches(pattern=pattern, flags=flags, match=match, v=True, tokens=tokens):
         yield token
 
-@wrap
+@connector
 def fnmatches(pathpattern, matchcase=False, tokens=None):
     """
     Filter tokens for strings that match the pathpattern using :py:func:`fnmatch.fnmatch` or :py:func:`fnmatch.fnmatchcase`.
@@ -1289,7 +1246,7 @@ def fnmatches(pathpattern, matchcase=False, tokens=None):
             yield line
         elif not matchcase and fnmatch.fnmatch(line, pathpattern):
             yield line
-@wrap
+@connector
 def find(pathpattern=None, tokens=None):
     """
     Searches for files the match a given pattern. For example
@@ -1310,7 +1267,7 @@ def find(pathpattern=None, tokens=None):
     else:
         return glob.iglob('**/*')
 
-@wrap
+@connector
 def words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None):
     r"""
     Words looks for non-overlapping strings that match the word pattern. It passes on the words it finds down
@@ -1354,7 +1311,7 @@ def words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, token
         result=matcher.findall(line)
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
 
-@wrap
+@connector
 def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
     """
     split separates the input using `.split(sep)`, by default splitting on whitespace (think :py:func:`str.split`)
@@ -1374,7 +1331,7 @@ def split(n=0, sep=None, outsep=None, names=None, inject={}, tokens=None):
     for line in tokens:
         result=line.split(sep)
         yield _ntodict(result, n, names, inject) if not outsep else outsep.join(_ntodict(result, n, names, inject))
-@wrap
+@connector
 def join(sep=' ', tokens=None):
     r"""
     Joins a list-like thing together using the supplied `sep` (think :py:func:`str.join`). Defaults to joining with a space
@@ -1387,7 +1344,7 @@ def join(sep=' ', tokens=None):
     for line in tokens:
         yield sep.join(line)
 
-@wrap
+@connector
 def update(values=None, funcs=None, tokens=None):
     """
     For each ``dict`` token in the stream, updates it with a ``values`` ``dict``, then updates it with ``funcs``, a ``dict`` mapping of ``key`` to ``func``
@@ -1419,7 +1376,7 @@ def update(values=None, funcs=None, tokens=None):
                 d[key]=func(d)
         yield d
 
-@wrap
+@connector
 def convert(converters, defaults={}, tokens=None):
     """
     Takes a ``dict`` or ``list`` of tokens and calls the supplied converter functions. 
@@ -1471,7 +1428,7 @@ def convert(converters, defaults={}, tokens=None):
                     raise
         yield line
 
-@wrap
+@connector
 def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=None), but 2.x won't
     """
     Applies a transformation function to each element of the stream (or series of function). Note that `smap(f, g, tokens)` yields `f(g(token))`
@@ -1488,7 +1445,7 @@ def smap(*funcs, **kwargs): #python 3.x will let you write smap(*funcs, tokens=N
     """
     return map(reduce(lambda f, g: lambda x: f(g(x)), funcs), kwargs['tokens'])
 
-@wrap
+@connector
 def strip(chars=None, tokens=None):
     r"""
     Runs ``.strip`` against each line of the stream
@@ -1502,7 +1459,7 @@ def strip(chars=None, tokens=None):
     """
     return map(lambda x: x.strip(chars), tokens)
 
-@wrap
+@connector
 def sfilter(func=None, tokens=None):
     """
 
@@ -1523,7 +1480,7 @@ def sfilter(func=None, tokens=None):
     """
     return filter(func, tokens)
 
-@wrap
+@connector
 def sfilterfalse(func=None, tokens=None):
     """
     Passes through items for which the output of the filter function is False in a boolean context
@@ -1537,7 +1494,7 @@ def sfilterfalse(func=None, tokens=None):
     """
     return filterfalse(func, tokens)
 
-@wrap
+@connector
 def takewhile(func=None, tokens=None):
 	"""
 	Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.takewhile`)
@@ -1550,7 +1507,7 @@ def takewhile(func=None, tokens=None):
 	"""
 	return itakewhile(func, tokens)
 
-@wrap
+@connector
 def dropwhile(func=None, tokens=None):
 	"""
 	Passes through items until the supplied function returns False (Equivalent of :py:func:`itertools.dropwhile`)
@@ -1563,7 +1520,7 @@ def dropwhile(func=None, tokens=None):
 	"""
 	return idropwhile(func, tokens)
 
-@wrap
+@connector
 def unwrap(tokens=None):
     """
     Yields a stream of ``list``s, with one level of nesting in the tokens the stream unwrapped (if present).
@@ -1578,7 +1535,7 @@ def unwrap(tokens=None):
     for token in tokens:
         yield list(ichain.from_iterable(token))
 
-@wrap
+@connector
 def traverse(tokens=None):
     r"""
     Performs a full depth-first unwrapping of the supplied tokens. Strings are **not** unwrapped
@@ -1599,7 +1556,7 @@ def traverse(tokens=None):
     for token in tokens:
         yield list(recunwrap(token))
 
-@wrap
+@connector
 def separate(tokens=None):
     r"""
     Takes a stream of ``Iterable``s, and yields items from the iterables 
@@ -1616,7 +1573,7 @@ def separate(tokens=None):
     for token in ichain.from_iterable(tokens):
         yield token
 
-@wrap
+@connector
 def combine(func=None, tokens=None):
     r"""
     Given a stream, combines the tokens together into a ``list``. If ``func`` is not ``None``, the ``tokens`` are combined 
@@ -1649,7 +1606,7 @@ def combine(func=None, tokens=None):
         if agg:
             yield agg
 
-@wrap
+@connector
 def sformat(pattern, tokens=None):
     """
     Takes in a list or dict of strings and formats them with the supplied pattern

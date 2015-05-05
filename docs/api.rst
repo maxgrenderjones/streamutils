@@ -17,7 +17,7 @@ A few things to note as you read the documentation and source code for streamuti
  *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
     normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
     which python is in use to give a correct overall coverage report
- *  Once wrapped, ComposableFunctions return a generator that can be iterated over (or if called with ``end=True``) return
+ *  Once wrapped, ConnectedFunctions return a generator that can be iterated over (or if called with ``end=True``) return
     a ``list``. Terminators return things e.g. the first item in the list (see ``first``), or a ``list`` of the items in
     the stream (see ``aslist``)
 
@@ -148,6 +148,13 @@ A few things to note as you read the documentation and source code for streamuti
 
     :param func: If not `None` (the default), combine until `func` returns `True`
     :param tokens: a stream of things
+
+.. py:function:: connector(func)
+
+    Decorator function used to create a ConnectedFunction (which yield a Connector once called)
+
+    :param func: The function to be wrapped - should either yield items into the pipeline or return an iterable
+    :param tokenskw: The keyword argument that func expects to receive tokens on
 
 .. py:function:: convert(converters, defaults={}, tokens=None)
 
@@ -468,13 +475,13 @@ A few things to note as you read the documentation and source code for streamuti
 .. py:function:: run(command, err=False, cwd=None, env=None, tokens=None)
 
     Runs a command. If command is a string then it will be split with :py:func:`shlex.split` so that it works as
-    expected on windows. Runs in the same process so gathers the full output of the command as soon as it is run
+    expected on windows. Current implementation runs in the same process so gathers the full output of the command 
+    before passing output to subsequent functions.
 
     >>> from streamutils import * #Suggestions for better commands to use as examples welcome!
     >>> rev=run('git log --reverse') | search('commit (\w+)', group=1) | first()
     >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
     True
-    >>> #rev == sh.git.log('--reverse') | search('commit (\w+)', group=1) | first() #Alternative using sh/pbs
 
     :param command: Command to run
     :param err: Redirect standard error to standard out (default False)
@@ -714,6 +721,14 @@ A few things to note as you read the documentation and source code for streamuti
 
 	:param func: The function to use as a predicate
 	:param tokens: List of things to filter
+
+.. py:function:: terminator(func)
+
+    Used as a decorator to create a Terminator function that can end a pipeline
+
+    :param func: The function to be wrapped - should return the desired output of the pipeline
+    :param tokenskw: The keyword argument that func expects to receive tokens on
+    :return: A Terminator function
 
 .. py:function:: traverse(tokens=None)
 

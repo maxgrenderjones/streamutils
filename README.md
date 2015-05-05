@@ -11,7 +11,7 @@ Have you ever been jealous of friends who know more commandline magic than you? 
 
 Or perhaps you are one of those friends, and your heart sinks at the thought of all the for loops you'd need to replicate a simple `grep "$username" /etc/passwd | cut -f 1,3 -d : --output-delimiter=" "` in python? Well, hopefully streamutils is for you.
 
-Put simply, streamutils is a pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`. For that, you want [sh] or its previous incarnation [pbs].
+Put simply, streamutils is a pythonic implementation of the pipelines offered by unix shells and the coreutils toolset. Streamutils is not (at least not primarily) a python wrapper around tools that you call from the commandline or a wrapper around `subprocess`  (for that, you want [sh] or its previous incarnation [pbs]). However, it can interface with external programmes through its `run` command.
 
 Enough already! What does it do? Perhaps it's best explained with an example. Suppose you want to reimplement our bash pipeline outlined above:
 
@@ -59,17 +59,7 @@ streamutils also mimics the `>` and `>>` operators of bash-like shells, so to wr
 ...
 ```
 
-Or perhaps you need to start off with output from a real command (streamutils wraps [sh]/[pbs]):
-```python
->>> from streamutils import *
->>> edited=sh.git.status() | matches('modified:') | words(2)    # doctest: +SKIP
->>> for edit in edited:                                         # doctest: +SKIP
-...    print(edit)
-...
-readme.md
-src/streamutils/__init__.py
-```
-(Or alternatively, if you don't want to install [sh]/[pbs])
+Or perhaps you need to start off with output from a real command:
 ```python
 >>> from streamutils import *
 >>> import platform
@@ -132,8 +122,8 @@ A quick bit of terminology:
 
 Implemented so far (equivalent `coreutils` function in brackets if the name is different). Note that the following descriptions say 'lines', but there's nothing stopping the functions operating on a stream of tokens that aren't newline terminated strings:
 
-###Composable Functions
-These are functions designed to start a stream or process a stream. Result is something that can be iterated over
+###Connectors
+These are functions designed to start a stream or process a stream (the underlying functions are wrapped via `@connector` and either return an `Iterator` or `yield` a series of values). Result is something that can be iterated over
 
 Functions that act on one token at a time:
 
@@ -156,7 +146,7 @@ Stream modifiers:
 
 
 ###Terminators
-These are functions that end a stream. Result may be a single value or a list (or something else - point is, not a generator).
+These are functions that end a stream (the underlying functions are wrapped in `@terminator` and `return` their values). Result may be a single value or a list (or something else - point is, not a generator).
 
 Implemented:
 
@@ -203,12 +193,6 @@ If you want pip to install the mandatory dependencies for you, then run:
 
     pip install streamutils[deps]
 
-And if you want to use streamutils with [sh] or [pbs] ([sh] succeeded [pbs] which is unmaintained but [sh] doesn't support Windows) and want `pip` to install them for you (note that they just provide syntactic sugar, not any new functionality):
-
-    pip install streamutils[sh]
-
-Note that to use them, you have to use the `sh` variable of the `streamutils` package which returns `wrap`-ed versions of the real `sh` functions.
-
 Alternatively, you can install from the source by running:
 
     python setup.py install
@@ -242,13 +226,13 @@ So what happened?
 In order:
 
 -   Functions used in pipelines are expected to (optionally) take as input an `Iterable` thing (as a keyword argument called `tokens` - in future, it should be possible to use any name), and use it to return an `Iterable` thing, or `yield` a series of values
--   Before using a function in a pipeline, it must be `wrap`-ped (via the `@wrap` decorator). This wraps the function in a `ComposableFunction` which defers execution, so, taking `read` (equivalent of unix `cat`) as an example, if you write `s=read('ez_setup.py')` then `read` not actually called, but the `__call__` method of wrapping `ComposableFunction`. This returns a `ConnectingGenerator` (which implements the basic `generator` functions) which waits for something to iterate over `s` or to compose (i.e. `|`) `s` with another `ConnectingGenerator`. When something starts iterating over a `ConnectingGenerator`, it passes through the values `yield`-ed by the  underlying function (i.e. `read`). So far, so unremarkable.
--   But, and here's where the magic happens, if you `|` `s` with another `wrap`-ed function e.g. `search`, then the `tokens` keyword argument of `read` is assigned the generator that will yield the output of the real `read` function. But still, nothing has happened - the functions have simply been wired together
+-   Before using a function in a pipeline, it must be wrapped (via either `@connector` or `@terminator` decorators). This wraps the function in a special `Callable` which defers execution, so, taking `read` (equivalent of unix `cat`) as an example, if you write `s=read('ez_setup.py')` then `read` not actually called, but the `__call__` method of wrapping `ConnectedFunction`. This returns a `Connector` (which implements the basic `generator` functions) which waits for something to iterate over `s` or to compose (i.e. `|`) `s` with another `Connector`. When something starts iterating over a `Connector`, it passes through the values `yield`-ed by the  underlying function (i.e. `read`). So far, so unremarkable.
+-   But, and here's where the magic happens, when you `|` a call to `read` with another wrapped function e.g. `search`, then the ouput of the `read` function is assigned to the `tokens` keyword argument of `search`. But still, nothing has happened - the functions have simply been wired together
 
 Two options for what you do next:
 
--   You iterate over `s`, in which case the functions are finally called and the results are passed down the chain. (Your for loop would iterate over the function names in `ez_setup.py`)
--   You compose `s` with a function (in this case `first`)  that has been decorated with `wrapTerminator` to give a `Terminator` function. A `Terminator` function completes the pipeline and will return a value, not another `generator`. (Strictly speaking, when you call a `Terminator` nothing happens. It's only when the `__or__` function (i.e. the `|` or `or` operator) is called betwen a `ConnectingGenerator` and a `Terminator` that the value returned by the function wrapped in a `Terminator` - in this case `first()` is called, and the chain of generators yield their values.
+-   You iterate over `s`, in which case the functions are finally called and the results are passed down the chain. (Your `for` loop would iterate over the function names in `ez_setup.py`)
+-   You compose `s` with a function (in this case `first`)  that has been decorated with `@terminator` to give a `Terminator`. A `Terminator` completes the pipeline and will `return` a value, not `yield` values like a `generator`. (Strictly speaking, when you call a `Terminator` nothing happens. It's only when the `__or__` function (i.e. the `|` bitwise OR operator) is called betwen a `Connector` and a `Terminator` that the function wrapped in the `Terminator` is called and the chain of generators yield their values.)
 
 Contribute
 ----------
