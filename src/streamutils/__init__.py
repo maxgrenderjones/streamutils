@@ -14,7 +14,7 @@ A few things to note as you read the documentation and source code for streamuti
     automatically on each of the generators in the stream. This gives each function a chance to clear up and e.g. close
     open files immediately rather than when garbage collected. If you want the same result when iterating over a stream,
     either iterate all the way to the end or call ``.close`` on the stream
- *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
+ *  For now, ``#pragma: no cover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
     normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
     which python is in use to give a correct overall coverage report
  *  Once wrapped, ConnectedFunctions return a generator that can be iterated over (or if called with ``end=True``) return
@@ -27,7 +27,7 @@ from __future__ import print_function, division#, unicode_literals
 
 from pkg_resources import parse_version 
 import six
-if parse_version(six.__version__) < parse_version('1.4.0'):  #pragma: nocover
+if parse_version(six.__version__) < parse_version('1.4.0'):  #pragma: no cover
     raise ImportError('six version >= 1.4.0 required')
 
 from six import StringIO, string_types, integer_types, MAXSIZE, PY2, PY3
@@ -47,7 +47,7 @@ except ImportError: # pragma: no cover
     from ordereddict import OrderedDict #To use OrderedDict backport
     from counter import Counter         #To use Counter backport
 from itertools import chain as ichain, islice, count as icount, takewhile as itakewhile, dropwhile as idropwhile, groupby as igroupby
-from functools import update_wrapper
+from functools import update_wrapper, partial
 
 from .version import __version__
 
@@ -55,27 +55,38 @@ __author__= 'maxgrenderjones'
 __docformat__ = 'restructuredtext'
 
 class Connector(Iterable):
+
     def __init__(self, func, tokenskw='tokens'):
         #print 'Create a Connector for function %s with pattern %s' % (func.__name__, args[0])
         self.func=func
         self.tokenskw=tokenskw
+        self.it=None # Required to be able to implement close
 
     def __call__(self, *args, **kwargs):
-        self.args=list(args)
-        self.kwargs=kwargs
-        self.it=None
-        return self
+        """
+        When our Connector is called we want to return a new Connector, but this time with a wrapped function.
+        Otherwise using the same function twice in a pipeline can lead to a loop
+
+        >>> head(n=10, fname='setup.py') | head(n=1) | first() | write() 
+        #!/usr/bin/env python
+
+        Even if the function is never called, it is wrapped in a partial func when __or__ is called
+        >>> head(n=10, fname='setup.py') | head | first() | write()
+        #!/usr/bin/env python
+
+        """
+        return Connector(update_wrapper(partial(self.func, *args, **kwargs), self.func), self.tokenskw)
 
     def __iter__(self):
-        it=self.func(*self.args, **self.kwargs)
-        if isinstance(self.it, Iterator):
+        it=self.func()
+        if isinstance(it, Iterator):
             pass # Function returned a generator (or similar)
         elif isinstance(it, Iterable):
-            it = it.__iter__() #Function returned a list (or similar)
-        elif hasattr(it, '__iter__'): #pragma: nocover - I don't know if this is needed
-            it = it.__iter__() #Function returned an iterable duck
-        else:  #pragma: nocover
-            raise TypeError('Composable Functions must return Iterators or Iterables (got %s)' % type(iter))
+            it=it.__iter__() #Function returned a list (or similar)
+        elif hasattr(it, '__iter__'): #pragma: no cover - I don't know if this is needed
+            it=it.__iter__() #Function returned an iterable duck
+        else:  #pragma: no cover
+            raise TypeError('functions wrapped in Connectors must be either generators or return Iterators or Iterables (got %s)' % type(iter))
         self.it=it
         return self.it
 
@@ -85,13 +96,17 @@ class Connector(Iterable):
         else:
             raise NotImplementedError('Cannot compose a Connector with a %s' % type(other))
 
-    def __ror__(self, other): 
-        if not (isinstance(other, Iterable)):
-            other=_wrapInIterable(other)
-        self.kwargs[self.tokenskw]=other
-        if self.kwargs.pop('end', False):
+    def __ror__(self, other):
+        """ 
+        Note that if the self is not the first element in the pipeline its __ror__ method will be called *before* __call__
+        """
+        other = other if isinstance(other, Iterable) else _wrapInIterable(other)
+        if not hasattr(self.func, 'keywords'): # We've never been called, so func isn't a partial
+            self.func=update_wrapper(partial(self.func, **{self.tokenskw: other}), self.func)
+        self.func.keywords[self.tokenskw]=other
+        if self.func.keywords.pop('end', False):
             with closing(self):
-                return list(self.func(*self.args, **self.kwargs))
+                return list(self.func())
         else:
             return self
 
@@ -102,6 +117,7 @@ class Connector(Iterable):
         return self | smap(lambda x: x if x.endswith('\n') else x+'\n') | write(other, mode='at') # without \n, no newline is added to the end of each token
 
     def __getattr__(self, name):
+        """Ensures that docstrings from wrapped function are returned, not Terminator"""
         return getattr(self.func, name)
 
     def close(self):
@@ -110,7 +126,7 @@ class Connector(Iterable):
             try:        # Close my generator
                 self.it.close()
             finally:    #Close the previous generator if there is one
-                tokens=self.kwargs.get(self.tokenskw, None)
+                tokens=self.func.keywords.get(self.tokenskw, None)
                 if tokens and hasattr(tokens, 'close'):
                     tokens.close()
 
@@ -121,21 +137,19 @@ class Terminator(Callable):
 
     def __ror__(self, other):
         if not (isinstance(other, Iterable)):
-            raise NotImplementedError('Cannot compose a Connector with a %s' % type(other)) #pragma: nocover
-        self.kwargs[self.tokenskw]=other
+            raise NotImplementedError('Cannot compose a Connector with a %s' % type(other)) #pragma: no cover
         try:
-            return self.func(*self.args, **self.kwargs)
+            return self.func(**{self.tokenskw: _wrapInIterable(other)})
         finally:
             if other and hasattr(other, 'close'):
                 other.close()
 
     def __call__(self, *args, **kwargs):
-        self.args=list(args)
-        self.kwargs=kwargs
-        return self #We don't do anything yet, as tokens won't be set yet - func is called by the
-                    #OR inside the Connector, after setting tokens
+        #We don't do anything yet, as tokens won't be set yet - func is called by the OR inside the Connector, after setting tokens
+        return Terminator(update_wrapper(partial(self.func, *args, **kwargs), self.func), tokenskw=self.tokenskw)
 
     def __getattr__(self, name):
+        """Ensures that docstrings from wrapped function are returned, not Terminator"""
         return getattr(self.func, name)
 
 @contextmanager
@@ -146,11 +160,11 @@ def _noopcontext(arg):
 @contextmanager
 def _wrappedopen(openfunc, fname, encoding, mode=True):
     #Horrible special-cased hacks
-    if PY3 and openfunc==urlopen:
+    if PY3 and openfunc==urlopen: # pragma: no cover
         with urlopen(fname) as f:
             with TextIOWrapper(f, encoding=encoding) as t:
                 yield t
-    elif PY3 and sys.version_info.minor>=3:
+    elif PY3 and sys.version_info.minor>=3: # pragma: no cover
         with openfunc(fname, mode='rt', encoding=encoding) as f:
             yield f
     elif openfunc==urlopen or PY2 and sys.version_info[1]==6 and openfunc==gzip.open:
@@ -191,7 +205,7 @@ def _eopen(fname, encoding=None):
         with _wrappedopen(urlopen, fname, encoding, mode=False) as f:
             yield f
     else:
-        ext = os.path.splitext(fname)[1]
+        ext=os.path.splitext(fname)[1]
         if ext in ['.gz', '.gzip']:
             openfunc=gzip.open
         elif ext in ['.bz2', ]:
@@ -202,7 +216,7 @@ def _eopen(fname, encoding=None):
             except:
                 try:
                     from backports import lzma
-                except:
+                except: # pragma: no cover
                     print('lzma module required to open .xz files - try installing backports.lzma')
                     raise
             openfunc=lzma.open
@@ -211,8 +225,6 @@ def _eopen(fname, encoding=None):
         if not encoding and os.path.splitext(fname) in ['.rb', 'py']:
             with _wrappedopen(openfunc, fname, encoding) as f:
                 encoding=head(tokens=f, n=2) | search(r'coding[:=]\s*"?([-\w.]+)"?', 1) | first()
-
-
         #print('Opening file %s with encoding %s' % (fname, encoding))
         with _wrappedopen(openfunc, fname, encoding) as f:
             yield f
@@ -316,7 +328,7 @@ __all__ = ['connector', 'terminator']
 
 def connector(func):
     '''
-    Decorator function used to create a ConnectedFunction (which yield a Connector once called)
+    Decorator used to wrap a function in a Connector 
 
     :param func: The function to be wrapped - should either yield items into the pipeline or return an iterable
     :param tokenskw: The keyword argument that func expects to receive tokens on
@@ -328,13 +340,13 @@ def connector(func):
 
 def terminator(func):
     """
-    Used as a decorator to create a Terminator function that can end a pipeline
+    Decorator used to wrap a function in a Terminator that ends a pipeline
 
     :param func: The function to be wrapped - should return the desired output of the pipeline
     :param tokenskw: The keyword argument that func expects to receive tokens on
     :return: A Terminator function
     """
-    t = update_wrapper(Terminator(func), func)
+    t=update_wrapper(Terminator(func), func)
     __test__[func.__name__]=func
     __all__.append(func.__name__)
     return t
@@ -362,7 +374,7 @@ def _wrapInIterable(item):
         return [item]
     elif isinstance(item, Iterable):
         return item
-    elif hasattr(item, '__iter__'): #pragma: nocover
+    elif hasattr(item, '__iter__'): #pragma: no cover
         return item
     else:
         return [item]
@@ -394,7 +406,6 @@ def run(command, err=False, cwd=None, env=None, tokens=None):
         output=subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stdin=stdin, env=env, universal_newlines=True).stdout
     else:
         output=subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=stdin, env=env, universal_newlines=True).stdout
-
     return output
 
 @terminator
@@ -700,7 +711,7 @@ def meanby(keys=None, values=None, tokens=None):
     if keys and values:
         values=_wrapInIterable(values)
         for data in tokens:
-            aggkey= data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            aggkey=data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
             for value in values:
                 counts[aggkey]=counts.get(aggkey, 0)+1
                 totals.setdefault(aggkey, {})[value]=totals.get(aggkey, {}).get(value, 0)+data[value]
@@ -717,8 +728,11 @@ def firstby(keys=None, values=None, tokens=None):
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
     >>> from streamutils import *
-    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | firstby()
+    >>> firsts = [('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)] | firstby()
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
+    True
+    >>> firsts = [{'key': 'A', 'value': 2}, {'key': 'B', 'value': 6}, {'key': 'A', 'value': 3}, {'key': 'C', 'value': 20}, {'key': 'C', 'value': 10}] | firstby(keys='key', values='value')
+    >>> firsts == {'A': {'value': 2}, 'B': {'value': 6}, 'C': {'value': 20}}
     True
 
     :param: keys ``dict`` keys for the values to aggregate on
@@ -753,7 +767,7 @@ def lastby(keys=None, values=None, tokens=None):
     result={}
     if keys and values:
         for data in tokens:
-            aggkey= data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
+            aggkey=data[keys] if isinstance(keys, string_types) else tuple(data[key] for key in _wrapInIterable(keys))
             for value in _wrapInIterable(values):
                 result.setdefault(aggkey, {})[value]=data[value]
     else:
@@ -972,7 +986,7 @@ def sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None):
             yield line  # Can't return the iterator or the file will be closed (I think!)
 
 @connector
-def follow(fname, encoding=None): #pragma: nocover - runs forever!
+def follow(fname, encoding=None): #pragma: no cover - runs forever!
     """
     Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never returns)
 
@@ -1007,7 +1021,9 @@ def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0,
     West
 
     :param fname: filename to read from - if None, reads from the stream
-    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode encoding - if you run into trouble I suggest reading the file with ``read`` then passing the output through the ``unidecode`` library using ``smap`` before ``csvread``)
+    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode 
+        encoding - if you run into trouble I suggest reading the file with ``read`` then passing the output through the 
+        ``unidecode`` library using ``smap`` before ``csvread``)
     :param dialect: the csv dialect (see :py:func:`csv.reader`)
     :param n: the columns to return (starting at 1). If set, names defines the names for these columns, not the names for all columns
     :param names: the keys to use in the DictReader (see the fieldnames keyword arg of :py:func:`csv.DictReader`)
@@ -1026,30 +1042,32 @@ def csvread(fname=None, encoding=None, dialect='excel', n=0, names=None, skip=0,
                 yield row
 
 @terminator
-def csvwrite(fname=None, encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams):
+def csvwrite(fname=None, mode='wb', encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams):
     """
     Writes the stream to a file (or stdout) in csv format using :py:func:`csv.writer`. If names is set, uses a :py:func:`csv.DictWriter`
 
-    :param fname: filename to write to - if None, uses stdout
+    >>> [{'Region': 'North', 'Revenue': 5, 'Cost' : 3}, {'Region': 'West', 'Revenue': 15, 'Cost' : 7}] | csvwrite(delimiter=';', names=['Region', 'Revenue', 'Cost']) # doctest: +NORMALIZE_WHITESPACE
+    Region;Revenue;Cost
+    North;5;3
+    West;15;7
+    >>> [['Region', 'Revenue', 'Cost'], ['North', 5, 3], ['West', 15, 7]] | csvwrite() # doctest: +NORMALIZE_WHITESPACE
+    Region,Revenue,Cost
+    North,5,3
+    West,15,7
+
+    :param fname: filename or file-like object to write to - if None, uses stdout
     :param encoding: encoding to use to write the file
     :param names: the keys to use in the DictWriter
     """
     import csv
 
-    if fname and isinstance(fname, string_types):
-        with open(fname, mode='wb') as f:
-            if names:
-                writer=csv.DictWriter(f, fieldnames=names, restval=restval, extrasaction=extrasaction, **fmtparams)
-                writer.writeheader()
-            else:
-                writer=csv.writer(f, dialect=dialect, **fmtparams)
-            for token in tokens: 
-                writer.writerow(token)
-    else:
-        f=fname if fname else sys.stdout
+    with open(fname, mode=mode, encoding=encoding) if fname and isinstance(fname, string_types) else _noopcontext(fname) if fname else _noopcontext(sys.stdout) as f:
         if names:
             writer=csv.DictWriter(f, fieldnames=names, restval=restval, extrasaction=extrasaction, **fmtparams)
-            writer.writeheader()
+            if not PY3 and sys.version_info[1]==6: # pragma: no cover
+                writer.writerow(dict((name, name) for name in names))
+            else:
+                writer.writeheader()
         else:
             writer=csv.writer(f, dialect=dialect, **fmtparams)
         for token in tokens: 
@@ -1084,7 +1102,7 @@ def gzread(fname=None, encoding=None, tokens=None):
     :param tokens: list of filenames
     """
     files=_wrapInIterable(fname) if fname else tokens
-    if files is None:  #pragma: nocover
+    if files is None:  #pragma: no cover
         raise ValueError('No filename or stream supplied')
     for name in files:
         with _wrappedopen(gzip.open, name, encoding=encoding) as lines:
@@ -1111,7 +1129,7 @@ def read(fname=None, encoding=None, skip=0, tokens=None):
             with _eopen(name, encoding) as f:
                 for line in islice(f, skip, None):
                     yield line
-    else:  #pragma: nocover
+    else:  #pragma: no cover
         import fileinput
         for line in fileinput.input('-'):
             yield line
@@ -1152,11 +1170,11 @@ def search(pattern, group=0, to=None, match=False, fname=None, encoding=None, na
     :param flags: Regexp flags to use
     :param tokens: strings to search through
     """
-    matcher = re.compile(pattern) if not flags else re.compile(pattern, flags=flags)
+    matcher=re.compile(pattern) if not flags else re.compile(pattern, flags=flags)
     if fname is not None:
         tokens=read(fname, encoding)
     for line in tokens:
-        result = matcher.match(line) if match else matcher.search(line)
+        result=matcher.match(line) if match else matcher.search(line)
         if not result and strict:
             raise ValueError('%s does not match pattern %s' % (line, pattern))
         if to:
@@ -1202,7 +1220,7 @@ def matches(pattern, match=False, flags=0, v=False, tokens=None):
     for line in tokens:
         #print 'Running line %s (type: %s) against %s' % (line, type(line), pattern)
         assert isinstance(line, string_types)
-        result = matcher.match(line) if match else matcher.search(line)
+        result=matcher.match(line) if match else matcher.search(line)
         if result and not v:
             yield line
         elif v and not result:
@@ -1638,5 +1656,5 @@ def sformat(pattern, tokens=None):
             yield pattern.format(*token)
         elif isinstance(token, Mapping):
             yield pattern.format(*token.values(), **token)
-        else:  # pragma: nocover
+        else:  # pragma: no cover
             raise TypeError('Format expects a sequence or a mapping - got a %s' % type(token))

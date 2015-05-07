@@ -85,8 +85,8 @@ Or perhaps you need to start off with output from a real command:
 
     >>> from streamutils import *
     >>> import platform
-    >>> cat = 'type' if platform.system()=='Windows' else 'cat' 
-    >>> run([cat, 'setup.py']) | search("keywords='(.*)'", group=1) | write()
+    >>> cat = 'python -c "import sys; print(open(sys.argv[1]).read())"' if platform.system()=='Windows' else 'cat' 
+    >>> run('%s setup.py' % cat) | search("keywords='(.*)'", group=1) | write()
     UNIX pipelines for python
 
 You don't have to take your input from a file or some other
@@ -399,16 +399,17 @@ How does it work?
 
 You don't need to know this to use the library, but you may be curious
 nonetheless - if you want, you can skip this section. (Warning: this may
-make your head hurt - it did mine). It's all implemented through the
-python magic of duck-typing contracts, decorators, generators and
-overloaded operators. (So wrong it's right? You decide...) Let's explain
-it with the example of a naive pipeline designed to find module-level
-function names within ``ez_setup.py``:
+make your head hurt - it did mine). In fact, the core of the library is
+only ~100 lines, but it took me a *lot* of time to find those magic 100
+lines. The answer is a mixture of generators, partials and overloaded
+operators. (So wrong it's right? You decide...) Let's explain it with
+the example of a naive pipeline designed to find module-level function
+names within ``ez_setup.py``:
 
 .. code:: python
 
     >>> from streamutils import *
-    >>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing happens yet
+    >>> s = read('ez_setup.py') | search(r'^def (\w+)[(]', 1) #Nothing really happens yet
     >>> first_function = s | first()                          #Only now is read actually called
     >>> print(first_function)
     _python_cmd
@@ -425,19 +426,26 @@ In order:
    ``@connector`` or ``@terminator`` decorators). This wraps the
    function in a special ``Callable`` which defers execution, so, taking
    ``read`` (equivalent of unix ``cat``) as an example, if you write
-   ``s=read('ez_setup.py')`` then ``read`` not actually called, but the
-   ``__call__`` method of wrapping ``ConnectedFunction``. This returns a
-   ``Connector`` (which implements the basic ``generator`` functions)
-   which waits for something to iterate over ``s`` or to compose (i.e.
-   ``|``) ``s`` with another ``Connector``. When something starts
-   iterating over a ``Connector``, it passes through the values
-   ``yield``-ed by the underlying function (i.e. ``read``). So far, so
-   unremarkable.
+   ``s=read('ez_setup.py')`` then you haven't actually called the
+   underlying ``read`` function but the ``__call__`` method of the
+   ``Connector`` it's wrapped in. This ``__call__`` method wraps the
+   original ``read`` function in a
+   `partial <https://docs.python.org/2/library/functools.html#functools.partial>`__,
+   which you can think of as a preprimed function object - i.e. when you
+   call it, it calls the underlying function with the arguments you
+   supplied when creating the partial. The ``__call__`` method itself
+   therefore returns a ``Connector`` (which implements the basic
+   ``generator`` functions) which waits for something to iterate over
+   ``s`` or to compose (i.e. ``|``) ``s`` with another ``Connector``.
+   When something starts iterating over a ``Connector``, it passes
+   through the values ``yield``-ed by the underlying function (i.e.
+   ``read``). So far, so unremarkable.
 -  But, and here's where the magic happens, when you ``|`` a call to
    ``read`` with another wrapped function e.g. ``search``, then the
-   ouput of the ``read`` function is assigned to the ``tokens`` keyword
-   argument of ``search``. But still, nothing has happened - the
-   functions have simply been wired together
+   output of the ``read`` function is called and to the ``tokens``
+   keyword argument of ``search``. But assuming ``read`` is a
+   ``generator`` function nothing has really happened, the functions
+   have simply been wired together
 
 Two options for what you do next:
 

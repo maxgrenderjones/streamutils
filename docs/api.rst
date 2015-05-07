@@ -14,7 +14,7 @@ A few things to note as you read the documentation and source code for streamuti
     automatically on each of the generators in the stream. This gives each function a chance to clear up and e.g. close
     open files immediately rather than when garbage collected. If you want the same result when iterating over a stream,
     either iterate all the way to the end or call ``.close`` on the stream
- *  For now, ``#pragma: nocover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
+ *  For now, ``#pragma: no cover`` is used to skip testing that Exceptions are thrown - these will be removed as soon as the
     normal code paths are fully tested. It is also used to skip one codepath where different code is run depending on
     which python is in use to give a correct overall coverage report
  *  Once wrapped, ConnectedFunctions return a generator that can be iterated over (or if called with ``end=True``) return
@@ -151,7 +151,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: connector(func)
 
-    Decorator function used to create a ConnectedFunction (which yield a Connector once called)
+    Decorator used to wrap a function in a Connector 
 
     :param func: The function to be wrapped - should either yield items into the pipeline or return an iterable
     :param tokenskw: The keyword argument that func expects to receive tokens on
@@ -222,7 +222,9 @@ A few things to note as you read the documentation and source code for streamuti
     West
 
     :param fname: filename to read from - if None, reads from the stream
-    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode encoding - if you run into trouble I suggest reading the file with ``read`` then passing the output through the ``unidecode`` library using ``smap`` before ``csvread``)
+    :param encoding: encoding to use to read the file (warning: the csv module in python 2 does not support unicode 
+        encoding - if you run into trouble I suggest reading the file with ``read`` then passing the output through the 
+        ``unidecode`` library using ``smap`` before ``csvread``)
     :param dialect: the csv dialect (see :py:func:`csv.reader`)
     :param n: the columns to return (starting at 1). If set, names defines the names for these columns, not the names for all columns
     :param names: the keys to use in the DictReader (see the fieldnames keyword arg of :py:func:`csv.DictReader`)
@@ -231,11 +233,20 @@ A few things to note as you read the documentation and source code for streamuti
     :param restval: (see the restval keyword arg of :py:func:`csv.DictReader`)
     :param fmtparams: see :py:func:`csv.reader`
 
-.. py:function:: csvwrite(fname=None, encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams)
+.. py:function:: csvwrite(fname=None, mode='wb', encoding=None, dialect='excel', names=None, restval='', extrasaction='raise', tokens=None, **fmtparams)
 
     Writes the stream to a file (or stdout) in csv format using :py:func:`csv.writer`. If names is set, uses a :py:func:`csv.DictWriter`
 
-    :param fname: filename to write to - if None, uses stdout
+    >>> [{'Region': 'North', 'Revenue': 5, 'Cost' : 3}, {'Region': 'West', 'Revenue': 15, 'Cost' : 7}] | csvwrite(delimiter=';', names=['Region', 'Revenue', 'Cost']) # doctest: +NORMALIZE_WHITESPACE
+    Region;Revenue;Cost
+    North;5;3
+    West;15;7
+    >>> [['Region', 'Revenue', 'Cost'], ['North', 5, 3], ['West', 15, 7]] | csvwrite() # doctest: +NORMALIZE_WHITESPACE
+    Region,Revenue,Cost
+    North,5,3
+    West,15,7
+
+    :param fname: filename or file-like object to write to - if None, uses stdout
     :param encoding: encoding to use to write the file
     :param names: the keys to use in the DictWriter
 
@@ -276,8 +287,11 @@ A few things to note as you read the documentation and source code for streamuti
     Given a series of key, value items, returns a dict of the first value assigned to each key
 
     >>> from streamutils import *
-    >>> firsts = head(tokens=[('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)]) | firstby()
+    >>> firsts = [('A', 2), ('B', 6), ('A', 3), ('C', 20), ('C', 10), ('C', 30)] | firstby()
     >>> firsts == {'A': 2, 'B': 6, 'C': 20}
+    True
+    >>> firsts = [{'key': 'A', 'value': 2}, {'key': 'B', 'value': 6}, {'key': 'A', 'value': 3}, {'key': 'C', 'value': 20}, {'key': 'C', 'value': 10}] | firstby(keys='key', values='value')
+    >>> firsts == {'A': {'value': 2}, 'B': {'value': 6}, 'C': {'value': 20}}
     True
 
     :param: keys ``dict`` keys for the values to aggregate on
@@ -732,7 +746,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: terminator(func)
 
-    Used as a decorator to create a Terminator function that can end a pipeline
+    Decorator used to wrap a function in a Terminator that ends a pipeline
 
     :param func: The function to be wrapped - should return the desired output of the pipeline
     :param tokenskw: The keyword argument that func expects to receive tokens on
