@@ -54,6 +54,7 @@ from .version import __version__
 __author__= 'maxgrenderjones'
 __docformat__ = 'restructuredtext'
 
+
 class Connector(Iterable):
 
     def __init__(self, func, tokenskw='tokens'):
@@ -126,9 +127,10 @@ class Connector(Iterable):
             try:        # Close my generator
                 self.it.close()
             finally:    #Close the previous generator if there is one
-                tokens=self.func.keywords.get(self.tokenskw, None)
-                if tokens and hasattr(tokens, 'close'):
-                    tokens.close()
+                if hasattr(self.func, 'keywords'): 
+                    tokens=self.func.keywords.get(self.tokenskw, None)
+                    if tokens and hasattr(tokens, 'close'):
+                        tokens.close()
 
 class Terminator(Callable):
     def __init__(self, func, tokenskw='tokens'):

@@ -180,7 +180,7 @@ I would be open to creating a `coreutils` (or similarly named) subpackage, which
 Installation and Dependencies
 -----------------------------
 
-`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports, on <3.3 it can use the `lzma` backport), pypy and python >=3 by using the [six] library (note that >=1.4.1 is required). For now, the easiest way to install it is to pull the latest version direct from github by running:
+`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports, on <3.3 it can use the `lzma` backport), and python >=3 by using the [six] library (note that >=1.4.1 is required). Ideally it would support pypy too, but support for `partial` functions is [broken](https://bitbucket.org/pypy/pypy/issue/2043/) in `pypy` For now, the easiest way to install it is to pull the latest version direct from github by running:
 
     pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
 
