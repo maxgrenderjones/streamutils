@@ -321,7 +321,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: follow(fname, encoding=None)
 
-    Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never returns)
+    Monitor a file, reading new lines as they are added (equivalent of ``tail -f`` on UNIX). (Note: Never returns)
 
     :param fname: File to read
     :param encoding: encoding to use to read the file
@@ -424,6 +424,31 @@ A few things to note as you read the documentation and source code for streamuti
     :params: values ``dict`` keys for the values to be aggregated
     :return: dict mapping each key to the sum of all the values corresponding to that key
 
+.. py:function:: merge(left, right, on, how='inner', join=tuple)
+
+    Merges two sequences together (think `JOIN` in `SQL`). For a left join, the right sequence is read
+    into memory then joined to the left sequence (so left sequence determines the order) and vice versa.
+    For an inner join, the right sequence is read into memory (so should be the shorter of the two).
+
+    :param left: Sequence of items that should be placed on the left
+    :param right: Sequence of items that should be placed on the right
+    :param on: `dict` key or attribute to join on
+    :param how: One of `inner`, `left`, `right` (`outer` not yet implemented)
+    :param join: Either `tuple` in which results are `yield`-ed as tuples of (leftval, rightval) or a function
+        in which case values are `yield`-ed as `join(leftval, rightval)`
+
+    >>> dogs=[{'Name': 'Fido', 'Owner': 'Bob'}, {'Name': 'Rover', 'Owner': 'John'}]
+    >>> cats=[{'Name': 'Tiddles', 'Owner': 'John'}, {'Name': 'Fluffy', 'Owner': 'Steve'}]
+    >>> result = merge(dogs, cats, on='Owner', how='inner') | aslist()
+    >>> result == [({'Name': 'Rover', 'Owner': 'John'}, {'Name': 'Tiddles', 'Owner': 'John'})]
+    True
+    >>> result = merge(dogs, cats, on='Owner', how='left') | aslist()
+    >>> result == [({'Name': 'Fido', 'Owner': 'Bob'}, None), ({'Name': 'Rover', 'Owner': 'John'}, {'Name': 'Tiddles', 'Owner': 'John'})]
+    True
+    >>> result = merge(dogs, cats, on='Owner', how='right') | aslist()
+    >>> result == [({'Name': 'Rover', 'Owner': 'John'}, {'Name': 'Tiddles', 'Owner': 'John'}), (None, {'Name': 'Fluffy', 'Owner': 'Steve'})]
+    True
+
 .. py:function:: nlargest(n, key=None, tokens=None)
 
     Returns the n largest elements of the stream (see documentation for :py:func:`heapq.nlargest`)
@@ -460,11 +485,11 @@ A few things to note as you read the documentation and source code for streamuti
     Returns the nth item in the stream, or a default if the list has less than n items
 
     >>> from streamutils import *
-    >>> tokens = ['Flopsy', 'Mopsy', 'Cottontail', 'Peter']
-    >>> rabbit = matches('.opsy', tokens=tokens) | nth(2)
+    >>> rabbits = ['Flopsy', 'Mopsy', 'Cottontail', 'Peter']
+    >>> rabbit = rabbits | matches('.opsy') | nth(2)
     >>> print(rabbit)
     Mopsy
-    >>> rabbit = matches('.opsy', tokens=tokens) | nth(3, default='No such rabbit')
+    >>> rabbit = rabbits | matches('.opsy') | nth(3, default='No such rabbit')
     >>> print(rabbit)
     No such rabbit
 
@@ -505,7 +530,7 @@ A few things to note as you read the documentation and source code for streamuti
     >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
     True
 
-    :param command: Command to run
+    :param command: Command to run as a string or list
     :param err: Redirect standard error to standard out (default False)
     :param cwd: Current working directory for command
     :param env: Environment to pass into command
@@ -760,7 +785,7 @@ A few things to note as you read the documentation and source code for streamuti
     hello
     hello world
 
-    :param tokens: a stream of ``Iterables`` to be unwrapped
+    :param tokens: a stream of ``Iterable`` things to be unwrapped
 
 .. py:function:: unique(tokens=None)
 
@@ -777,7 +802,7 @@ A few things to note as you read the documentation and source code for streamuti
 
 .. py:function:: unwrap(tokens=None)
 
-    Yields a stream of ``list``s, with one level of nesting in the tokens the stream unwrapped (if present).
+    Yields a stream of ``lists``, with one level of nesting in the tokens the stream unwrapped (if present).
 
     >>> [[[1], [2]], [[2, 3, 4], [5]], [[[6]]]] | unwrap() | write()
     [1, 2]
@@ -790,7 +815,7 @@ A few things to note as you read the documentation and source code for streamuti
 
     For each ``dict`` token in the stream, updates it with a ``values`` ``dict``, then updates it with ``funcs``, a ``dict`` mapping of ``key`` to ``func``
     which it uses to set the value of ``key`` to ``func(token)``. A bit like ``convert``, only it's designed to let you add keys, not just modify existing ones.
-    Currently modifies the ``dict``s in the stream (i.e. not pure), but this should not be relied on - in the future it may yield (shallow) copied ``dict``s in
+    Currently modifies each ``dict`` in the stream (i.e. not pure), but this should not be relied on - in the future each ``dict`` may yield (shallow) copied in
     order to be pure (at a cost of more allocations)
 
     >>> from streamutils import *

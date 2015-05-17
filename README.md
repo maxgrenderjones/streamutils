@@ -145,9 +145,7 @@ Stream modifiers:
 
 
 ###Terminators
-These are functions that end a stream (the underlying functions are wrapped in `@terminator` and `return` their values). Result may be a single value or a list (or something else - point is, not a generator).
-
-Implemented:
+These are functions that end a stream (the underlying functions are wrapped in `@terminator` and `return` their values). Result may be a single value or a list (or something else - point is, not a generator). As soon as you apply a `Terminator` to a stream it computes the result.
 
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
 -   `count`, `bag`, `ssorted`, `ssum`: to return the number of tokens in the stream (`wc`); a `collections.Counter` (i.e. `dict` subclass) with unique tokens as keys and a count of their occurences as values; a sorted list of the tokens; add the tokens. (Note that `ssorted` is a terminator as it needs to exhaust the stream before it can start working)
@@ -161,12 +159,15 @@ Implemented:
 
 Note that if you have a `Iterable` object (or one that behaves like an iterable), you can pass it into the first function of the pipeline as its `tokens` argument.
 
+### Other
+To facilitate stream creation, the `merge` function can be used to join two streams together `SQL`-style (`left`/`inner`/`right`)
+
 API Philosophy & Conventions
 ----------------------------
 There are a number of tenets to the API philosophy, which is intended to maximise backward and forward compatibility and minimise surprises - while the API is in flux, if functions don't fit the tenets (or tenets turn out to be flawed - feedback welcome!) then the API or tenets will be changed. If you remember these, you should be able to guess (or at least remember) what a function will be called, and how to call it. These tenets are:
 
 -   Functions should have sensible names (none of this `cat` / `wc` nonsense - apologies to you who are so trained as to think that `cat` *is* the sensible name...)
--   These names should be as close as possible to the name of the related function from the python library. It's ok if the function names clash (e.g. there's a function called `search` in `re` too), but not if they clash with builtin functions - in that case they get an `s` prepended (hence `sfilter`, `sfilterfalse`, `sformat`). (For discussion: is this the right idea? Would it be easier if all functions had s prefixes?)
+-   These names should be as close as possible to the name of the related function from the python library. It's ok if the function names clash with their vanilla counterparts from a module (e.g. there's a function called `search` in `re` too), but not if they clash with builtin functions - in that case they get an `s` prepended (hence `sfilter`, `sfilterfalse`, `sformat`). (For discussion: is this the right idea? Would it be easier if all functions had s prefixes?)
 -   If you need to avoid clashes, `import streamutils as su` (which has the double benefit of being nice and terse to keep your pipelines short, and will help make you [all powerful](xkcd.com/149/))
 -   Positional arguments that are central to what a function does come first (e.g. `n`, the number of lines to return, is the first argument of `head`) and their order should be stable over time. For brevity, they should be given sensible defaults. If additional keyword arguments are added, they will be added after existing ones. After the positional arguments comes `fname`, which allows you to avoid using `read`. To be safe, apart from for `read`, `head`, `tail` and `follow`, `fname` should therefore be called as a keyword argument as it marks the first argument whose position is not guaranteed to be stable.
 -   `tokens` is the last keyword argument of each function
@@ -180,7 +181,9 @@ I would be open to creating a `coreutils` (or similarly named) subpackage, which
 Installation and Dependencies
 -----------------------------
 
-`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports, on <3.3 it can use the `lzma` backport), and python >=3 by using the [six] library (note that >=1.4.1 is required). Ideally it would support pypy too, but support for `partial` functions is [broken](https://bitbucket.org/pypy/pypy/issue/2043/) in `pypy` For now, the easiest way to install it is to pull the latest version direct from github by running:
+`streamutils` supports python >=2.6 (on 2.6 it needs the `OrderedDict` and `Counter` backports, on <3.3 it can use the `lzma` backport), and python >=3 by using the [six] library (note that >=1.4.1 is required). Ideally it would support [pypy] too, but support for `partial` functions in the released versions of [pypy] is [broken](https://bitbucket.org/pypy/pypy/issue/2043/) at the time of writing.
+
+For now, the easiest way to install it is to pull the latest version direct from github by running:
 
     pip install git+https://github.com/maxgrenderjones/streamutils.git#egg=streamutils
 
@@ -200,8 +203,8 @@ If you don't have [pip], which is now the official way to install python package
 
 Status
 ------
-`streamutils` is currently alpha status. By which I mean:
--   I think it works fine, but the code test coverage is not yet as high as I'd like (is it ever?)
+`streamutils` is currently beta status. By which I mean:
+-   I think it works fine, but there may be edge cases I haven't yet thought of (found one? submit a bug report, or better, a pull request)
 -   The API is unstable, i.e. the names of functions are still in flux, the order of the positional arguments may change, and the order of keyword arguments is almost guaranteed to change
 
 So why release?
@@ -267,6 +270,7 @@ Apache log file example provided by [Nasa](http://ita.ee.lbl.gov/html/contrib/NA
 [six]: https://pythonhosted.org/six/
 [pip]: http://pip.readthedocs.org/en/latest/installing.html
 [partial]: https://docs.python.org/2/library/functools.html#functools.partial
+[pypy]: http://pypy.org/
 
 License
 -------

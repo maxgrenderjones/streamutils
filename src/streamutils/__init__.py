@@ -40,7 +40,7 @@ import re, time, subprocess, os, glob, locale, shlex, sys, codecs, inspect, heap
 from io import open, TextIOWrapper
 from contextlib import closing, contextmanager
 
-from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence
+from collections import Iterable, Callable, Iterator, deque, Mapping, Sequence, defaultdict
 try:
     from collections import OrderedDict, Counter
 except ImportError: # pragma: no cover
@@ -95,7 +95,7 @@ class Connector(Iterable):
         if isinstance(other, Connector) or isinstance(other, Terminator):
             return other.__ror__(self)
         else:
-            raise NotImplementedError('Cannot compose a Connector with a %s' % type(other))
+            raise NotImplementedError('Cannot compose a Connector with a %s' % type(other)) #pragma: no cover
 
     def __ror__(self, other):
         """ 
@@ -326,7 +326,7 @@ def _ntodict(results, n, names, inject={}):
                 return results
 
 __test__ = {}
-__all__ = ['connector', 'terminator']
+__all__ = ['connector', 'terminator', 'merge']
 
 def connector(func):
     '''
@@ -393,7 +393,7 @@ def run(command, err=False, cwd=None, env=None, tokens=None):
     >>> rev == run('git log') | search('commit (\w+)', group=1) | last()
     True
 
-    :param command: Command to run
+    :param command: Command to run as a string or list
     :param err: Redirect standard error to standard out (default False)
     :param cwd: Current working directory for command
     :param env: Environment to pass into command
@@ -534,11 +534,11 @@ def nth(n, default=None, tokens=None):
     Returns the nth item in the stream, or a default if the list has less than n items
 
     >>> from streamutils import *
-    >>> tokens = ['Flopsy', 'Mopsy', 'Cottontail', 'Peter']
-    >>> rabbit = matches('.opsy', tokens=tokens) | nth(2)
+    >>> rabbits = ['Flopsy', 'Mopsy', 'Cottontail', 'Peter']
+    >>> rabbit = rabbits | matches('.opsy') | nth(2)
     >>> print(rabbit)
     Mopsy
-    >>> rabbit = matches('.opsy', tokens=tokens) | nth(3, default='No such rabbit')
+    >>> rabbit = rabbits | matches('.opsy') | nth(3, default='No such rabbit')
     >>> print(rabbit)
     No such rabbit
 
@@ -990,7 +990,7 @@ def sslice(start=1, stop=None, step=1, fname=None, encoding=None, tokens=None):
 @connector
 def follow(fname, encoding=None): #pragma: no cover - runs forever!
     """
-    Monitor a file, reading new lines as they are added (equivalent of `tail -f` on UNIX). (Note: Never returns)
+    Monitor a file, reading new lines as they are added (equivalent of ``tail -f`` on UNIX). (Note: Never returns)
 
     :param fname: File to read
     :param encoding: encoding to use to read the file
@@ -1300,8 +1300,8 @@ def find(pathpattern=None, tokens=None):
 def words(n=0, word=r'\S+', outsep=None, names=None, inject=None, flags=0, tokens=None):
     r"""
     Words looks for non-overlapping strings that match the word pattern. It passes on the words it finds down
-    the stream. If outsep is None, it will pass on a list, otherwise it will join together the selected words with
-    outsep
+    the stream. If ``outsep`` is ``None``, it will pass on a ``list``, otherwise it will join together the selected 
+    words with ``outsep``
 
     >>> from streamutils import *
     >>> tokens=[str('first second third'), str(' fourth fifth sixth ')]
@@ -1378,7 +1378,7 @@ def update(values=None, funcs=None, tokens=None):
     """
     For each ``dict`` token in the stream, updates it with a ``values`` ``dict``, then updates it with ``funcs``, a ``dict`` mapping of ``key`` to ``func``
     which it uses to set the value of ``key`` to ``func(token)``. A bit like ``convert``, only it's designed to let you add keys, not just modify existing ones.
-    Currently modifies the ``dict``s in the stream (i.e. not pure), but this should not be relied on - in the future it may yield (shallow) copied ``dict``s in
+    Currently modifies each ``dict`` in the stream (i.e. not pure), but this should not be relied on - in the future each ``dict`` may yield (shallow) copied in
     order to be pure (at a cost of more allocations)
 
     >>> from streamutils import *
@@ -1393,8 +1393,8 @@ def update(values=None, funcs=None, tokens=None):
     24
 
     :param values: ``dict`` 
-    :param funcs: ``dict`` of ``key``: ``function``s
-    :param tokens: a stream of ``dict``s
+    :param funcs: ``dict`` of ``key``: ``func``
+    :param tokens: a stream of ``dict``
 
     """
     for d in tokens:
@@ -1552,7 +1552,7 @@ def dropwhile(func=None, tokens=None):
 @connector
 def unwrap(tokens=None):
     """
-    Yields a stream of ``list``s, with one level of nesting in the tokens the stream unwrapped (if present).
+    Yields a stream of ``lists``, with one level of nesting in the tokens the stream unwrapped (if present).
 
     >>> [[[1], [2]], [[2, 3, 4], [5]], [[[6]]]] | unwrap() | write()
     [1, 2]
@@ -1573,7 +1573,7 @@ def traverse(tokens=None):
     hello
     hello world
 
-    :param tokens: a stream of ``Iterables`` to be unwrapped
+    :param tokens: a stream of ``Iterable`` things to be unwrapped
     """
     def recunwrap(token):
         if isinstance(token, string_types) or not isinstance(token, Iterable):
@@ -1634,6 +1634,50 @@ def combine(func=None, tokens=None):
                 agg=[]
         if agg:
             yield agg
+
+def merge(left, right, on, how='inner', join=tuple):
+    r"""
+    Merges two sequences together (think `JOIN` in `SQL`). For a left join, the right sequence is read
+    into memory then joined to the left sequence (so left sequence determines the order) and vice versa.
+    For an inner join, the right sequence is read into memory (so should be the shorter of the two).
+
+    :param left: Sequence of items that should be placed on the left
+    :param right: Sequence of items that should be placed on the right
+    :param on: `dict` key or attribute to join on
+    :param how: One of `inner`, `left`, `right` (`outer` not yet implemented)
+    :param join: Either `tuple` in which results are `yield`-ed as tuples of (leftval, rightval) or a function
+        in which case values are `yield`-ed as `join(leftval, rightval)`
+
+    >>> dogs=[{'Name': 'Fido', 'Owner': 'Bob'}, {'Name': 'Rover', 'Owner': 'John'}]
+    >>> cats=[{'Name': 'Tiddles', 'Owner': 'John'}, {'Name': 'Fluffy', 'Owner': 'Steve'}]
+    >>> result = merge(dogs, cats, on='Owner', how='inner') | aslist()
+    >>> result == [({'Name': 'Rover', 'Owner': 'John'}, {'Name': 'Tiddles', 'Owner': 'John'})]
+    True
+    >>> result = merge(dogs, cats, on='Owner', how='left') | aslist()
+    >>> result == [({'Name': 'Fido', 'Owner': 'Bob'}, None), ({'Name': 'Rover', 'Owner': 'John'}, {'Name': 'Tiddles', 'Owner': 'John'})]
+    True
+    >>> result = merge(dogs, cats, on='Owner', how='right') | aslist()
+    >>> result == [({'Name': 'Rover', 'Owner': 'John'}, {'Name': 'Tiddles', 'Owner': 'John'}), (None, {'Name': 'Fluffy', 'Owner': 'Steve'})]
+    True
+    """
+    if how not in ['left', 'right', 'inner']:
+        raise NotImplementedError('Merge method {how} not implemented'.format(**locals())) #pragma: no cover
+    index=defaultdict(list)
+    for val in right if how in ['left', 'inner'] else left:
+        index[getattr(val, on, val[on])].append(val)
+    for val in left if how in ['left', 'inner'] else right:
+        onval = getattr(val, on, val[on])
+        if onval in index:
+            for other in index[onval]:
+                if join==tuple:
+                    yield tuple([val, other]) if how in ['left', 'inner'] else tuple([other, val])
+                else:
+                    yield join(val, other) if how in ['left', 'inner'] else join(other, val)
+        elif how in ['left', 'right']:
+            if join==tuple:
+                yield tuple([val, None]) if how=='left' else tuple([None, val])
+            else:
+                yield tuple([val, None]) if how=='right' else tuple([None, val])
 
 @connector
 def sformat(pattern, tokens=None):

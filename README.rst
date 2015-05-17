@@ -241,8 +241,8 @@ Terminators
 These are functions that end a stream (the underlying functions are
 wrapped in ``@terminator`` and ``return`` their values). Result may be a
 single value or a list (or something else - point is, not a generator).
-
-Implemented:
+As soon as you apply a ``Terminator`` to a stream it computes the
+result.
 
 -  ``first``, ``last``, ``nth`` to: return the first item of the stream;
    the last item of the stream; the nth item of the stream
@@ -270,6 +270,12 @@ Note that if you have a ``Iterable`` object (or one that behaves like an
 iterable), you can pass it into the first function of the pipeline as
 its ``tokens`` argument.
 
+Other
+~~~~~
+
+To facilitate stream creation, the ``merge`` function can be used to
+join two streams together ``SQL``-style (``left``/``inner``/``right``)
+
 API Philosophy & Conventions
 ----------------------------
 
@@ -286,11 +292,11 @@ These tenets are:
    ``cat`` *is* the sensible name...)
 -  These names should be as close as possible to the name of the related
    function from the python library. It's ok if the function names clash
-   (e.g. there's a function called ``search`` in ``re`` too), but not if
-   they clash with builtin functions - in that case they get an ``s``
-   prepended (hence ``sfilter``, ``sfilterfalse``, ``sformat``). (For
-   discussion: is this the right idea? Would it be easier if all
-   functions had s prefixes?)
+   with their vanilla counterparts from a module (e.g. there's a
+   function called ``search`` in ``re`` too), but not if they clash with
+   builtin functions - in that case they get an ``s`` prepended (hence
+   ``sfilter``, ``sfilterfalse``, ``sformat``). (For discussion: is this
+   the right idea? Would it be easier if all functions had s prefixes?)
 -  If you need to avoid clashes, ``import streamutils as su`` (which has
    the double benefit of being nice and terse to keep your pipelines
    short, and will help make you `all powerful <xkcd.com/149/>`__)
@@ -341,10 +347,16 @@ Installation and Dependencies
 
 ``streamutils`` supports python >=2.6 (on 2.6 it needs the
 ``OrderedDict`` and ``Counter`` backports, on <3.3 it can use the
-``lzma`` backport), pypy and python >=3 by using the
+``lzma`` backport), and python >=3 by using the
 `six <https://pythonhosted.org/six/>`__ library (note that >=1.4.1 is
-required). For now, the easiest way to install it is to pull the latest
-version direct from github by running:
+required). Ideally it would support `pypy <http://pypy.org/>`__ too, but
+support for ``partial`` functions in the released versions of
+`pypy <http://pypy.org/>`__ is
+`broken <https://bitbucket.org/pypy/pypy/issue/2043/>`__ at the time of
+writing.
+
+For now, the easiest way to install it is to pull the latest version
+direct from github by running:
 
 ::
 
@@ -380,11 +392,12 @@ https://raw.github.com/pypa/pip/master/contrib/get-pip.py
 Status
 ------
 
-``streamutils`` is currently alpha status. By which I mean: - I think it
-works fine, but the code test coverage is not yet as high as I'd like
-(is it ever?) - The API is unstable, i.e. the names of functions are
-still in flux, the order of the positional arguments may change, and the
-order of keyword arguments is almost guaranteed to change
+``streamutils`` is currently beta status. By which I mean: - I think it
+works fine, but there may be edge cases I haven't yet thought of (found
+one? submit a bug report, or better, a pull request) - The API is
+unstable, i.e. the names of functions are still in flux, the order of
+the positional arguments may change, and the order of keyword arguments
+is almost guaranteed to change
 
 So why release? - Because as soon as I managed to get ``streamutils``
 working, I couldn't stop thinking of all the places I'd want to use it -
