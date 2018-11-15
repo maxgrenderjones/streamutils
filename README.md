@@ -121,7 +121,7 @@ A quick bit of terminology:
 
 Implemented so far (equivalent `coreutils` function in brackets if the name is different). Note that the following descriptions say 'lines', but there's nothing stopping the functions operating on a stream of tokens that aren't newline terminated strings:
 
-###Connectors
+### Connectors
 These are functions designed to start a stream or process a stream (the underlying functions are wrapped via `@connector` and either return an `Iterator` or `yield` a series of values). Result is something that can be iterated over
 
 Functions that act on one token at a time:
@@ -144,7 +144,7 @@ Stream modifiers:
 -   `separate`, `combine`: to split the tokens in the stream so that the remainder of the stream receives sub-tokens; to combine subtokens back into tokens
 
 
-###Terminators
+### Terminators
 These are functions that end a stream (the underlying functions are wrapped in `@terminator` and `return` their values). Result may be a single value or a list (or something else - point is, not a generator). As soon as you apply a `Terminator` to a stream it computes the result.
 
 -   `first`, `last`, `nth` to: return the first item of the stream; the last item of the stream; the nth item of the stream
